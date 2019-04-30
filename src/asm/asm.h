@@ -16,6 +16,6 @@ struct Instruction parseLine(char*);
 enum Opcode parseOpcode(char*);
 enum Condition parseCondition(char*);
 byte parseByte(char*);
-dword parseDword(char*);
+word parseWord(char*);
 
 #endif //ZLVM_C_ASM_H

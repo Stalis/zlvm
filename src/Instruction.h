@@ -13,7 +13,7 @@ struct Instruction {
     enum Condition condition_ : 8;
     byte register1 : 8;
     byte register2 : 8;
-    dword immediate : 32;
+    word immediate : 32;
 };
 
 #endif //ZLVM_C_INSTRUCTION_H

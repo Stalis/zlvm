@@ -11,13 +11,14 @@
 union CPSR {
     union Value value_;
     struct {
-        bool N : 1;
-        bool Z : 1;
-        bool C : 1;
-        bool V : 1;
-        byte _reserved : 4;
+        bool N : 1; // negative
+        bool Z : 1; // zero
+        bool C : 1; // carry
+        bool V : 1; // overflow
+        bool S : 1; // last operation is signed
+        byte _reserved : 3;
         enum State ST : 8;
-        qword _reserverd1 : 48;
+        dword _reserverd1 : 48;
     };
 };
 

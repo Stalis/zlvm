@@ -13,6 +13,11 @@ enum Condition {
     C_LESS_OR_EQUALS,
     C_GREATER,
     C_GREATER_OR_EQUALS,
+    C_NEGATIVE,
+    C_ZERO,
+    C_OVERFLOW,
+    C_CARRY,
+    C_SIGNED,
     C_TOTAL,
 };
 

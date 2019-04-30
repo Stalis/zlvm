@@ -16,7 +16,7 @@ struct Instruction parseLine(char* line) {
     enum Condition cond = parseCondition(strtok(NULL, partsDelimiters));
     byte reg1 = parseByte(strtok(NULL, partsDelimiters));
     byte reg2 = parseByte(strtok(NULL, partsDelimiters));
-    dword imm = parseDword(strtok(NULL, partsDelimiters));
+    word imm = parseWord(strtok(NULL, partsDelimiters));
     struct Instruction res = {
             .opcode_ = op,
             .condition_ = cond,
@@ -60,6 +60,7 @@ struct Instruction* parseFile(char* source, size_t* length) {
         instructions[i] = parseLine(lines[i]);
     }
 
+    free(lines);
     *length = lines_count;
     return instructions;
 }
@@ -170,10 +171,10 @@ byte parseByte(char* source) {
     return (byte) strtoul(source, end, 10);
 }
 
-dword parseDword(char* source) {
+word parseWord(char* source) {
     if (source == NULL)
         return 0;
 
     char** end = NULL;
-    return (dword) strtoul(source, end, 10);
+    return (word) strtoul(source, end, 10);
 }

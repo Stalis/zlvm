@@ -9,8 +9,8 @@
 
 union Value {
     byte byte_;
-    word word_;
-    dword dword_;
+    hword word_;
+    word dword_;
 //    qword qword_;
 };
 

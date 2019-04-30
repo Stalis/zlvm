@@ -11,7 +11,7 @@ void printState(enum State state);
 
 int main() {
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
-    printf("Size of machine word: %lu bytes\n", __ZLVM_MACHINE_WORD);
+    printf("Size of machine hword: %lu bytes\n", __ZLVM_WORD_SIZE);
     printf("\n");
 
     byte* buffer;
@@ -22,6 +22,7 @@ int main() {
     struct VirtualMachine vm = {};
     initialize(&vm);
     loadDump(&vm, buffer, size);
+    free(buffer);
     enum State state = run(&vm);
 
     printf("Result code: %d\n", state);

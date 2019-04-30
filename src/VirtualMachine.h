@@ -14,7 +14,7 @@
 static const size_t __ZLVM_MEMORY_SIZE = 1024;
 static const size_t __ZLVM_STACK_SIZE = 256;
 static const size_t __ZLVM_REGISTER_COUNT = 16;
-static const size_t __ZLVM_MACHINE_WORD = sizeof(dword);
+static const size_t __ZLVM_WORD_SIZE = sizeof(word);
 
 struct VirtualMachine {
     union Value _pc;
@@ -37,28 +37,28 @@ struct Instruction fetchInstruction(struct VirtualMachine*);
 void runInstruction(struct VirtualMachine*, struct Instruction);
 bool checkCondition(struct VirtualMachine*, enum Condition);
 
-byte readByte(struct VirtualMachine*, size_t address);
-void writeByte(struct VirtualMachine*, size_t address, byte value);
+byte readByte(struct VirtualMachine* this, size_t address);
+void writeByte(struct VirtualMachine* this, size_t address, byte value);
 
-word readWord(struct VirtualMachine*, size_t address);
-void writeWord(struct VirtualMachine*, size_t address, word value);
+hword readHword(struct VirtualMachine* this, size_t address);
+void writeHword(struct VirtualMachine* this, size_t address, hword value);
 
-dword readDword(struct VirtualMachine*, size_t address);
-void writeDword(struct VirtualMachine*, size_t address, dword value);
+word readWord(struct VirtualMachine* this, size_t address);
+void writeWord(struct VirtualMachine* this, size_t address, word value);
 
-qword readQword(struct VirtualMachine*, size_t address);
-void writeQword(struct VirtualMachine*, size_t address, qword value);
+dword readDword(struct VirtualMachine* this, size_t address);
+void writeDword(struct VirtualMachine* this, size_t address, dword value);
 
-dword popDword(struct VirtualMachine*);
-void pushDword(struct VirtualMachine*, dword);
+word popWord(struct VirtualMachine* this);
+void pushWord(struct VirtualMachine* this, word value);
 
 bool notError(struct VirtualMachine*);
 bool checkState(struct VirtualMachine*, enum State);
 void setState(struct VirtualMachine*, enum State);
 enum State getState(struct VirtualMachine*);
 
-void doOperation(struct VirtualMachine*, enum Operation, dword, dword);
+void doOperation(struct VirtualMachine*, enum Operation, word, word);
 
-void interrupt(struct VirtualMachine*, dword code);
+void interrupt(struct VirtualMachine*, word code);
 void syscall(struct VirtualMachine*);
 #endif //ZLVM_C_VIRTUALMACHINE_H

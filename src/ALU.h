@@ -11,7 +11,8 @@ enum Operation {
     OP_NOOP = 0,
     OP_ID, OP_ADD, OP_SUB, OP_MUL, OP_DIV,
     OP_MOD, OP_NOT, OP_AND, OP_OR, OP_XOR,
-    OP_NAND, OP_NOR, OP_INC, OP_DEC,
+    OP_NAND, OP_NOR, OP_INC, OP_DEC, OP_SADD,
+    OP_SSUB, OP_SMUL, OP_SDIV, OP_SMOD,
     OP_TOTAL,
 };
 
@@ -20,13 +21,14 @@ struct ALUFlags {
     bool Z : 1;
     bool V : 1;
     bool C : 1;
-    byte _reserved : 4;
+    bool S : 1;
+    byte _reserved : 3;
 };
 
 struct ALU {
-    dword left_;
-    dword right_;
-    dword result_;
+    word left_;
+    word right_;
+    word result_;
     enum Operation op_;
     struct ALUFlags flags_;
 };

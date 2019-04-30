@@ -43,7 +43,6 @@ byte fetchByte(struct VirtualMachine* vm) {
 }
 
 struct Instruction fetchInstruction(struct VirtualMachine* vm) {
-    byte* buf = (byte*) malloc(sizeof(struct Instruction));
     byte bufArr[sizeof(struct Instruction)] = {0};
     for (size_t i = 0; i < sizeof(struct Instruction); i++) {
         bufArr[i] = fetchByte(vm);
@@ -57,29 +56,29 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
 
     union Value* reg1 = &vm->_registers[instruction.register1];
     union Value* reg2 = &vm->_registers[instruction.register2];
-    dword imm = instruction.immediate;
+    word imm = instruction.immediate;
 
     switch (instruction.opcode_) {
         case NOP:
             break;
 
         case POPR:
-            reg1->dword_ = popDword(vm);
+            reg1->dword_ = popWord(vm);
             break;
         case POP:
-            popDword(vm);
+            popWord(vm);
             break;
 
         case PUSHR:
-            pushDword(vm, reg1->dword_);
+            pushWord(vm, reg1->dword_);
             break;
         case PUSHI:
-            pushDword(vm, imm);
+            pushWord(vm, imm);
             break;
         case DUP: {
-            dword buf = popDword(vm);
-            pushDword(vm, buf);
-            pushDword(vm, buf);
+            word buf = popWord(vm);
+            pushWord(vm, buf);
+            pushWord(vm, buf);
         }
             break;
 
@@ -165,16 +164,16 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             goto __alu_write_result;
 
         case LOADR:
-            reg1->dword_ = readDword(vm, reg2->dword_);
+            reg1->dword_ = readWord(vm, reg2->dword_);
             break;
         case LOADI:
-            reg1->dword_ = readDword(vm, imm);
+            reg1->dword_ = readWord(vm, imm);
             break;
         case STORER:
-            writeDword(vm, reg1->dword_, reg2->dword_);
+            writeWord(vm, reg1->dword_, reg2->dword_);
             break;
         case STOREI:
-            writeDword(vm, reg1->dword_, imm);
+            writeWord(vm, reg1->dword_, imm);
             break;
 
         case INT:
@@ -194,10 +193,10 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         case CMPI:
-            doOperation(vm, OP_SUB, reg1->dword_, imm);
+            doOperation(vm, OP_SSUB, reg1->dword_, imm);
             break;
         case CMPR:
-            doOperation(vm, OP_SUB, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_SSUB, reg1->dword_, reg2->dword_);
             break;
 
         case HALT:
@@ -234,6 +233,16 @@ bool checkCondition(struct VirtualMachine* vm, enum Condition condition) {
             return !((vm->_cpsr.Z) || ((vm->_cpsr.N) ^ (vm->_cpsr.V)));
         case C_GREATER_OR_EQUALS:
             return !((vm->_cpsr.N) ^ (vm->_cpsr.V));
+        case C_NEGATIVE:
+            return vm->_cpsr.N;
+        case C_ZERO:
+            return vm->_cpsr.Z;
+        case C_OVERFLOW:
+            return vm->_cpsr.V;
+        case C_CARRY:
+            return vm->_cpsr.C;
+        case C_SIGNED:
+            return vm->_cpsr.S;
         default:
             setState(vm, S_ERR_INVALID_CONDITION);
             return false;
@@ -254,6 +263,22 @@ void writeByte(struct VirtualMachine* this, size_t address, byte value) {
         return;
     }
     this->_memory[address] = value;
+}
+
+hword readHword(struct VirtualMachine* this, size_t address) {
+    hword res = 0;
+    byte* ptr = (byte*) &res;
+    for (size_t i = 0; i < sizeof(hword); i++) {
+        ptr[i] = readByte(this, address + i);
+    }
+    return res;
+}
+
+void writeHword(struct VirtualMachine* this, size_t address, hword value) {
+    byte* buf = (byte*) &value;
+    for (size_t i = 0; i < sizeof(hword); i++) {
+        writeByte(this, address + i, buf[i]);
+    }
 }
 
 word readWord(struct VirtualMachine* this, size_t address) {
@@ -288,39 +313,23 @@ void writeDword(struct VirtualMachine* this, size_t address, dword value) {
     }
 }
 
-qword readQword(struct VirtualMachine* this, size_t address) {
-    qword res = 0;
-    byte* ptr = (byte*) &res;
-    for (size_t i = 0; i < sizeof(qword); i++) {
-        ptr[i] = readByte(this, address + i);
-    }
-    return res;
-}
-
-void writeQword(struct VirtualMachine* this, size_t address, qword value) {
-    byte* buf = (byte*) &value;
-    for (size_t i = 0; i < sizeof(qword); i++) {
-        writeByte(this, address + i, buf[i]);
-    }
-}
-
-dword popDword(struct VirtualMachine* vm) {
-    if ((sdword) (vm->_sp.dword_ - __ZLVM_MACHINE_WORD) < 0) {
-        setState(vm, S_ERR_STACK_UNDERFLOW);
+word popWord(struct VirtualMachine* this) {
+    if ((sword) (this->_sp.dword_ - __ZLVM_WORD_SIZE) < 0) {
+        setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
-    dword res = readDword(vm, vm->_sp.dword_);
-    vm->_sp.dword_ -= __ZLVM_MACHINE_WORD;
+    word res = readWord(this, this->_sp.dword_);
+    this->_sp.dword_ -= __ZLVM_WORD_SIZE;
     return res;
 }
 
-void pushDword(struct VirtualMachine* vm, dword value) {
-    if (vm->_sp.dword_ + __ZLVM_MACHINE_WORD >= __ZLVM_STACK_SIZE) {
-        setState(vm, S_ERR_STACK_OVERFLOW);
+void pushWord(struct VirtualMachine* this, word value) {
+    if (this->_sp.dword_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE) {
+        setState(this, S_ERR_STACK_OVERFLOW);
         return;
     }
-    vm->_sp.dword_ += __ZLVM_MACHINE_WORD;
-    writeDword(vm, vm->_sp.dword_, value);
+    this->_sp.dword_ += __ZLVM_WORD_SIZE;
+    writeWord(this, this->_sp.dword_, value);
 }
 
 bool notError(struct VirtualMachine* vm) {
@@ -341,7 +350,7 @@ enum State getState(struct VirtualMachine* vm) {
     return vm->_cpsr.ST;
 }
 
-void doOperation(struct VirtualMachine* vm, enum Operation op, dword left, dword right) {
+void doOperation(struct VirtualMachine* vm, enum Operation op, word left, word right) {
     vm->_alu.op_ = op;
     vm->_alu.left_ = left;
     vm->_alu.right_ = right;
@@ -352,9 +361,10 @@ void doOperation(struct VirtualMachine* vm, enum Operation op, dword left, dword
     vm->_cpsr.Z = vm->_alu.flags_.Z;
     vm->_cpsr.V = vm->_alu.flags_.V;
     vm->_cpsr.C = vm->_alu.flags_.C;
+    vm->_cpsr.S = vm->_alu.flags_.S;
 }
 
-void interrupt(struct VirtualMachine* vm, dword code) {
+void interrupt(struct VirtualMachine* vm, word code) {
     // TODO: прерывания :)))
 }
 
