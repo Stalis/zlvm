@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "VirtualMachine.h"
+#include "emulator/VirtualMachine.h"
 #include "asm/asm.h"
 
 const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";

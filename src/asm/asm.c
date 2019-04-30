@@ -3,7 +3,7 @@
 //
 #include <string.h>
 #include <ctype.h>
-#include "../Common.h"
+#include "../common/Types.h"
 #include "asm.h"
 
 inline static void line_to_lower(char* line) {
@@ -17,6 +17,7 @@ struct Instruction parseLine(char* line) {
     byte reg1 = parseByte(strtok(NULL, partsDelimiters));
     byte reg2 = parseByte(strtok(NULL, partsDelimiters));
     word imm = parseWord(strtok(NULL, partsDelimiters));
+
     struct Instruction res = {
             .opcode_ = op,
             .condition_ = cond,
@@ -75,6 +76,9 @@ byte* assembly(char* source, size_t* size) {
 enum Opcode parseOpcode(char* mnemonic) {
     if (mnemonic == NULL)
         return NOP;
+    else
+        line_to_lower(mnemonic);
+
 #define CHECK(str, code) \
     if (strcmp(mnemonic, str) == 0) \
         return code
@@ -144,8 +148,13 @@ enum Opcode parseOpcode(char* mnemonic) {
 enum Condition parseCondition(char* mnemonic) {
     if (mnemonic == NULL)
         return C_UNCONDITIONAL;
-    if (strlen(mnemonic) > 2)
-        mnemonic[2] = '\0';
+    else
+        line_to_lower(mnemonic);
+
+    size_t last = strlen(mnemonic) - 1;
+    if (mnemonic[last] == -1) {
+        mnemonic[last] = '\0';
+    }
 
 #define CHECK(str, code) \
     if (strcmp(mnemonic, str) == 0) \
@@ -158,6 +167,13 @@ enum Condition parseCondition(char* mnemonic) {
     CHECK("ge", C_GREATER_OR_EQUALS);
     CHECK("lt", C_LESS);
     CHECK("le", C_LESS_OR_EQUALS);
+
+    CHECK("n", C_NEGATIVE);
+    CHECK("z", C_ZERO);
+    CHECK("v", C_OVERFLOW);
+    CHECK("c", C_CARRY);
+    CHECK("s", C_SIGNED);
+
 
     return C_UNCONDITIONAL;
 #undef CHECK

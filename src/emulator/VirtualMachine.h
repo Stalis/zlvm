@@ -5,10 +5,10 @@
 #ifndef ZLVM_C_VIRTUALMACHINE_H
 #define ZLVM_C_VIRTUALMACHINE_H
 
-#include "Common.h"
-#include "Value.h"
+#include "../common/Types.h"
+#include "../common/Value.h"
 #include "CPSR.h"
-#include "Instruction.h"
+#include "../common/Instruction.h"
 #include "ALU.h"
 
 static const size_t __ZLVM_MEMORY_SIZE = 1024;

@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_REGISTER_H
 #define ZLVM_C_REGISTER_H
 
-#include "Common.h"
+#include "Types.h"
 
 union Value {
     byte byte_;
