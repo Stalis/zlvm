@@ -2,13 +2,14 @@
 // Created by Stanislav on 2019-05-01.
 //
 
-#ifndef ZLVM_C_OPCODEMACRO_H
-#define ZLVM_C_OPCODEMACRO_H
+#ifndef ZLVM_C_OPCODE_H
+#define ZLVM_C_OPCODE_H
 
 #include <string.h>
 #include "Types.h"
 
 #define FOREACH_OPCODE(OPCODE) \
+    OPCODE(NOP)\
     OPCODE(POP)\
     OPCODE(POPR)\
     OPCODE(PUSHR)\
@@ -67,13 +68,11 @@
 #define GENERATE_STRING(STRING) #STRING,
 
 enum Opcode {
-    NOP = 0,
     FOREACH_OPCODE(GENERATE_ENUM)
     OPCODE_TOTAL,
 };
 
 static const char* opcode_strings[] = {
-        "NOP",
         FOREACH_OPCODE(GENERATE_STRING)
 };
 
@@ -99,4 +98,4 @@ static enum Opcode string_to_opcode(const char* string) {
     return OPCODE_TOTAL;
 }
 
-#endif //ZLVM_C_OPCODEMACRO_H
+#endif //ZLVM_C_OPCODE_H

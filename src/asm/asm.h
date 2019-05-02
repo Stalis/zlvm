@@ -10,12 +10,25 @@
 static const char lineDelimiters[] = "\n\r";
 static const char partsDelimiters[] = " \t";
 
+static const char HexHeader[] = "0X";
+static const char OctHeader[] = "0O";
+static const char BinHeader[] = "0B";
+
+static const sword EXIT_CODE_INVALID_OPERATION = -10;
+static const sword EXIT_CODE_INVALID_CONDITION = -11;
+static const sword EXIT_CODE_INVALID_REGISTER = -12;
+static const sword EXIT_CODE_INVALID_IMMEDIATE = -13;
+
 byte* assembly(char* source, size_t* size);
 struct Instruction* parseFile(char* source, size_t* length);
 struct Instruction parseLine(char*);
-enum Opcode parseOpcode(char*);
-enum Condition parseCondition(char*);
+
+bool parseOpcode(char*, enum Opcode*);
+bool parseCondition(char*, enum Condition*);
+bool parseRegister(char*, byte*);
+bool parseImmediate(char*, word*);
+
 byte parseByte(char*);
-word parseWord(char*);
+word parseWord(char*, byte base);
 
 #endif //ZLVM_C_ASM_H

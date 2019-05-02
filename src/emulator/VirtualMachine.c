@@ -1,13 +1,27 @@
 //
 // Created by Stanislav on 2019-04-26.
 //
+#include "VirtualMachine.h"
+
 #if DEBUG
 
 #include <printf.h>
 
-#endif
+static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
+    for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns) {
+        for (byte j = 0; j < columns && j < __ZLVM_REGISTER_COUNT; j++) {
+            printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
+        }
+        printf("\n");
+    }
 
-#include "VirtualMachine.h"
+    printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n",
+           vm->_pc.word_, vm->_sp.word_, vm->_bp.word_, vm->_sc.word_, vm->_lp.word_);
+    printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n",
+           vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S, vm->_cpsr.ST);
+}
+
+#endif
 
 void initialize(struct VirtualMachine* this) {
     for (size_t i = 0; i < __ZLVM_REGISTER_COUNT; i++) {
@@ -34,23 +48,6 @@ void loadDump(struct VirtualMachine* vm, byte* program, size_t size) {
         vm->_memory[__ZLVM_STACK_SIZE + i] = program[i];
     }
 }
-
-#if DEBUG
-
-static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
-    for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns) {
-        for (byte j = 0; j < columns && j < __ZLVM_REGISTER_COUNT; j++) {
-            printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
-        }
-        printf("\n");
-    }
-    printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n", vm->_pc.word_, vm->_sp.word_, vm->_bp.word_,
-           vm->_sc.word_, vm->_lp.word_);
-    printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n", vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S,
-           vm->_cpsr.ST);
-}
-
-#endif
 
 enum State run(struct VirtualMachine* vm) {
     vm->_pc.word_ = __ZLVM_STACK_SIZE; // set to end of stack

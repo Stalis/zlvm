@@ -12,6 +12,7 @@ void printState(enum State state);
 int main() {
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
     printf("Size of machine hword: %lu bytes\n", __ZLVM_WORD_SIZE);
+    printf("Operations count: %d\n", NOP); //OPCODE_TOTAL);
     printf("\n");
 
     byte* buffer;

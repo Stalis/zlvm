@@ -17,19 +17,54 @@ inline static void line_to_upper(char* line) {
 }
 
 struct Instruction parseLine(char* line) {
-    enum Opcode op = parseOpcode(strtok(line, partsDelimiters));
-    enum Condition cond = parseCondition(strtok(NULL, partsDelimiters));
-    byte reg1 = parseByte(strtok(NULL, partsDelimiters));
-    byte reg2 = parseByte(strtok(NULL, partsDelimiters));
-    word imm = parseWord(strtok(NULL, partsDelimiters));
+    bool error = false;
+
+    enum Opcode op = NOP;
+    enum Condition cond = C_UNCONDITIONAL;
+    byte reg1 = 0;
+    byte reg2 = 0;
+    word imm = 0;
+
+    byte* preg1 = NULL;
+
+    char* part = strtok(line, partsDelimiters);
+    if (!parseOpcode(part, &op)) {
+        exit(EXIT_CODE_INVALID_OPERATION);
+    }
+
+    part = strtok(NULL, partsDelimiters);
+    while (NULL != part) {
+        if (parseCondition(part, &cond)) {
+            goto __next_part;
+        }
+
+        byte reg = 0;
+        if (parseRegister(part, &reg)) {
+            if (NULL == preg1) {
+                reg1 = reg;
+                preg1 = &reg1;
+            } else {
+                reg2 = reg;
+            }
+            goto __next_part;
+        }
+
+        if (parseImmediate(part, &imm)) {
+            goto __next_part;
+        }
+
+        __next_part:
+        part = strtok(NULL, partsDelimiters);
+    }
 
     struct Instruction res = {
             .opcode_ = op,
             .condition_ = cond,
             .register1 = reg1,
             .register2 = reg2,
-            .immediate = imm
+            .immediate = imm,
     };
+
     return res;
 }
 
@@ -78,22 +113,25 @@ byte* assembly(char* source, size_t* size) {
     return buf;
 }
 
-enum Opcode parseOpcode(char* mnemonic) {
-    if (mnemonic == NULL)
-        return NOP;
+bool parseOpcode(char* mnemonic, enum Opcode* res) {
+    if (mnemonic == NULL) {
+        return false;
+    }
     else
         line_to_upper(mnemonic);
 
-    enum Opcode res = string_to_opcode(mnemonic);
-    if (res == OPCODE_TOTAL) {
-        // TODO: Error handling
+    *res = string_to_opcode(mnemonic);
+    if (*res == OPCODE_TOTAL) {
+        return false;
     }
-    return res;
+    return true;
 }
 
-enum Condition parseCondition(char* mnemonic) {
-    if (mnemonic == NULL)
-        return C_UNCONDITIONAL;
+bool parseCondition(char* mnemonic, enum Condition* res) {
+    if (mnemonic == NULL) {
+        *res = C_UNCONDITIONAL;
+        return true;
+    }
     else
         line_to_lower(mnemonic);
 
@@ -103,8 +141,10 @@ enum Condition parseCondition(char* mnemonic) {
     }
 
 #define CHECK(str, code) \
-    if (strcmp(mnemonic, str) == 0) \
-        return code
+    if (strcmp(mnemonic, str) == 0) { \
+        *res = code; \
+        return true; \
+    }
 
     CHECK("un", C_UNCONDITIONAL);
     CHECK("eq", C_EQUALS);
@@ -120,9 +160,45 @@ enum Condition parseCondition(char* mnemonic) {
     CHECK("c", C_CARRY);
     CHECK("s", C_SIGNED);
 
-
-    return C_UNCONDITIONAL;
+    return false;
 #undef CHECK
+}
+
+bool parseRegister(char* source, byte* res) {
+    if (NULL == source) {
+        return false;
+    }
+
+    if (source[0] == 'r') {
+        *res = parseByte(source + 1);
+        return true;
+    }
+
+    return false;
+}
+
+bool parseImmediate(char* source, word* res) {
+    if (NULL == source) {
+        return false;
+    }
+
+    char* base_header = malloc(sizeof(char) * 3);
+    strncpy(base_header, source, sizeof(char) * 2);
+
+    line_to_upper(base_header);
+
+    if (strcmp(base_header, HexHeader) == 0) {
+        *res = parseWord(source + 2, 16);
+    } else if (strcmp(base_header, OctHeader) == 0) {
+        *res = parseWord(source + 2, 8);
+    } else if (strcmp(base_header, BinHeader) == 0) {
+        *res = parseWord(source + 2, 2);
+    } else {
+        *res = parseWord(source, 10);
+    }
+
+    free(base_header);
+    return true;
 }
 
 byte parseByte(char* source) {
@@ -133,10 +209,10 @@ byte parseByte(char* source) {
     return (byte) strtoul(source, end, 10);
 }
 
-word parseWord(char* source) {
+word parseWord(char* source, byte base) {
     if (source == NULL)
         return 0;
 
     char** end = NULL;
-    return (word) strtoul(source, end, 10);
+    return (word) strtoul(source, end, base);
 }
