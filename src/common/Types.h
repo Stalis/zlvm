@@ -9,10 +9,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "Opcode.h"
-#include "State.h"
-#include "Condition.h"
-
 typedef uint8_t byte;
 typedef uint16_t hword;
 typedef uint32_t word;

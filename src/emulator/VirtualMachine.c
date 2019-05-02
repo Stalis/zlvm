@@ -1,22 +1,27 @@
 //
 // Created by Stanislav on 2019-04-26.
 //
+#if DEBUG
+
+#include <printf.h>
+
+#endif
 
 #include "VirtualMachine.h"
 
 void initialize(struct VirtualMachine* this) {
     for (size_t i = 0; i < __ZLVM_REGISTER_COUNT; i++) {
-        this->_registers[i].dword_ = 0;
+        this->_registers[i].word_ = 0;
     }
     for (size_t i = 0; i < __ZLVM_MEMORY_SIZE + __ZLVM_STACK_SIZE; i++) {
         this->_memory[i] = 0;
     }
 
-    this->_pc.dword_ = 0;
-    this->_sp.dword_ = 0;
-    this->_bp.dword_ = 0;
-    this->_sc.dword_ = 0;
-    this->_cpsr.value_.dword_ = 0;
+    this->_pc.word_ = 0;
+    this->_sp.word_ = 0;
+    this->_bp.word_ = 0;
+    this->_sc.word_ = 0;
+    this->_cpsr.value_.word_ = 0;
     setState(this, S_NORMAL);
 }
 
@@ -30,16 +35,36 @@ void loadDump(struct VirtualMachine* vm, byte* program, size_t size) {
     }
 }
 
+#if DEBUG
+
+static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
+    for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns) {
+        for (byte j = 0; j < columns && j < __ZLVM_REGISTER_COUNT; j++) {
+            printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
+        }
+        printf("\n");
+    }
+    printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n", vm->_pc.word_, vm->_sp.word_, vm->_bp.word_,
+           vm->_sc.word_, vm->_lp.word_);
+    printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n", vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S,
+           vm->_cpsr.ST);
+}
+
+#endif
+
 enum State run(struct VirtualMachine* vm) {
-    vm->_pc.dword_ = __ZLVM_STACK_SIZE; // set to end of stack
+    vm->_pc.word_ = __ZLVM_STACK_SIZE; // set to end of stack
     while (notError(vm) && !checkState(vm, S_HALTED)) {
         runInstruction(vm, fetchInstruction(vm));
     }
+#if DEBUG
+    printRegisters(vm, 4);
+#endif
     return getState(vm);
 }
 
 byte fetchByte(struct VirtualMachine* vm) {
-    return readByte(vm, vm->_pc.dword_++);
+    return readByte(vm, vm->_pc.word_++);
 }
 
 struct Instruction fetchInstruction(struct VirtualMachine* vm) {
@@ -63,14 +88,14 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         case POPR:
-            reg1->dword_ = popWord(vm);
+            reg1->word_ = popWord(vm);
             break;
         case POP:
             popWord(vm);
             break;
 
         case PUSHR:
-            pushWord(vm, reg1->dword_);
+            pushWord(vm, reg1->word_);
             break;
         case PUSHI:
             pushWord(vm, imm);
@@ -83,97 +108,129 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         case MOVR:
-            reg1->dword_ = reg2->dword_;
+            reg1->word_ = reg2->word_;
             break;
         case MOVI:
-            reg1->dword_ = imm;
+            reg1->word_ = imm;
             break;
 
         case ADDR:
-            doOperation(vm, OP_ADD, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_ADD, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case SUBR:
-            doOperation(vm, OP_SUB, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_SUB, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case MULR:
-            doOperation(vm, OP_MUL, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_MUL, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case DIVR:
-            doOperation(vm, OP_DIV, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_DIV, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case MODR:
-            doOperation(vm, OP_MOD, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_MOD, reg1->word_, reg2->word_);
             goto __alu_write_result;
 
         case ADDI:
-            doOperation(vm, OP_ADD, reg1->dword_, imm);
+            doOperation(vm, OP_ADD, reg1->word_, imm);
             goto __alu_write_result;
         case SUBI:
-            doOperation(vm, OP_SUB, reg1->dword_, imm);
+            doOperation(vm, OP_SUB, reg1->word_, imm);
             goto __alu_write_result;
         case MULI:
-            doOperation(vm, OP_MUL, reg1->dword_, imm);
+            doOperation(vm, OP_MUL, reg1->word_, imm);
             goto __alu_write_result;
         case DIVI:
-            doOperation(vm, OP_DIV, reg1->dword_, imm);
+            doOperation(vm, OP_DIV, reg1->word_, imm);
             goto __alu_write_result;
         case MODI:
-            doOperation(vm, OP_MOD, reg1->dword_, imm);
+            doOperation(vm, OP_MOD, reg1->word_, imm);
+            goto __alu_write_result;
+
+        case ADDSR:
+            doOperation(vm, OP_SADD, reg1->word_, reg2->word_);
+            goto __alu_write_result;
+        case SUBSR:
+            doOperation(vm, OP_SSUB, reg1->word_, reg2->word_);
+            goto __alu_write_result;
+        case MULSR:
+            doOperation(vm, OP_SMUL, reg1->word_, reg2->word_);
+            goto __alu_write_result;
+        case DIVSR:
+            doOperation(vm, OP_SDIV, reg1->word_, reg2->word_);
+            goto __alu_write_result;
+        case MODSR:
+            doOperation(vm, OP_SMOD, reg1->word_, reg2->word_);
+            goto __alu_write_result;
+
+        case ADDSI:
+            doOperation(vm, OP_SADD, reg1->word_, imm);
+            goto __alu_write_result;
+        case SUBSI:
+            doOperation(vm, OP_SSUB, reg1->word_, imm);
+            goto __alu_write_result;
+        case MULSI:
+            doOperation(vm, OP_SMUL, reg1->word_, imm);
+            goto __alu_write_result;
+        case DIVSI:
+            doOperation(vm, OP_SDIV, reg1->word_, imm);
+            goto __alu_write_result;
+        case MODSI:
+            doOperation(vm, OP_SMOD, reg1->word_, imm);
             goto __alu_write_result;
 
         case NOT:
-            doOperation(vm, OP_NOT, reg1->dword_, 0);
+            doOperation(vm, OP_NOT, reg1->word_, 0);
             goto __alu_write_result;
         case ANDR:
-            doOperation(vm, OP_AND, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_AND, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case ORR:
-            doOperation(vm, OP_OR, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_OR, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case XORR:
-            doOperation(vm, OP_XOR, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_XOR, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case NANDR:
-            doOperation(vm, OP_NAND, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_NAND, reg1->word_, reg2->word_);
             goto __alu_write_result;
         case NORR:
-            doOperation(vm, OP_NOR, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_NOR, reg1->word_, reg2->word_);
             goto __alu_write_result;
 
         case ANDI:
-            doOperation(vm, OP_AND, reg1->dword_, imm);
+            doOperation(vm, OP_AND, reg1->word_, imm);
             goto __alu_write_result;
         case ORI:
-            doOperation(vm, OP_OR, reg1->dword_, imm);
+            doOperation(vm, OP_OR, reg1->word_, imm);
             goto __alu_write_result;
         case XORI:
-            doOperation(vm, OP_XOR, reg1->dword_, imm);
+            doOperation(vm, OP_XOR, reg1->word_, imm);
             goto __alu_write_result;
         case NANDI:
-            doOperation(vm, OP_NAND, reg1->dword_, imm);
+            doOperation(vm, OP_NAND, reg1->word_, imm);
             goto __alu_write_result;
         case NORI:
-            doOperation(vm, OP_NOR, reg1->dword_, imm);
+            doOperation(vm, OP_NOR, reg1->word_, imm);
             goto __alu_write_result;
 
         case INC:
-            doOperation(vm, OP_INC, reg1->dword_, 0);
+            doOperation(vm, OP_INC, reg1->word_, 0);
             goto __alu_write_result;
         case DEC:
-            doOperation(vm, OP_DEC, reg1->dword_, 0);
+            doOperation(vm, OP_DEC, reg1->word_, 0);
             goto __alu_write_result;
 
         case LOADR:
-            reg1->dword_ = readWord(vm, reg2->dword_);
+            reg1->word_ = readWord(vm, reg2->word_);
             break;
         case LOADI:
-            reg1->dword_ = readWord(vm, imm);
+            reg1->word_ = readWord(vm, imm);
             break;
         case STORER:
-            writeWord(vm, reg1->dword_, reg2->dword_);
+            writeWord(vm, reg1->word_, reg2->word_);
             break;
         case STOREI:
-            writeWord(vm, reg1->dword_, imm);
+            writeWord(vm, reg1->word_, imm);
             break;
 
         case INT:
@@ -184,23 +241,25 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         case JMPAL:
-            vm->_lp.dword_ = vm->_pc.dword_;
+            vm->_lp.word_ = vm->_pc.word_;
         case JMP:
-            vm->_pc.dword_ = imm;
+            vm->_pc.word_ = imm;
             break;
         case RET:
-            vm->_pc.dword_ = vm->_lp.dword_;
+            vm->_pc.word_ = vm->_lp.word_;
             break;
 
         case CMPI:
-            doOperation(vm, OP_SSUB, reg1->dword_, imm);
+            doOperation(vm, OP_SUB, reg1->word_, imm);
             break;
         case CMPR:
-            doOperation(vm, OP_SSUB, reg1->dword_, reg2->dword_);
+            doOperation(vm, OP_SUB, reg1->word_, reg2->word_);
             break;
-
-        case HALT:
-            setState(vm, S_HALTED);
+        case CMPSI:
+            doOperation(vm, OP_SSUB, reg1->word_, imm);
+            break;
+        case CMPSR:
+            doOperation(vm, OP_SUB, reg1->word_, reg2->word_);
             break;
 
         default:
@@ -208,7 +267,7 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         __alu_write_result:
-            reg1->dword_ = vm->_alu.result_;
+            reg1->word_ = vm->_alu.result_;
             break;
     }
 
@@ -314,22 +373,22 @@ void writeDword(struct VirtualMachine* this, size_t address, dword value) {
 }
 
 word popWord(struct VirtualMachine* this) {
-    if ((sword) (this->_sp.dword_ - __ZLVM_WORD_SIZE) < 0) {
+    if ((sword) (this->_sp.word_ - __ZLVM_WORD_SIZE) < 0) {
         setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
-    word res = readWord(this, this->_sp.dword_);
-    this->_sp.dword_ -= __ZLVM_WORD_SIZE;
+    word res = readWord(this, this->_sp.word_);
+    this->_sp.word_ -= __ZLVM_WORD_SIZE;
     return res;
 }
 
 void pushWord(struct VirtualMachine* this, word value) {
-    if (this->_sp.dword_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE) {
+    if (this->_sp.word_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE) {
         setState(this, S_ERR_STACK_OVERFLOW);
         return;
     }
-    this->_sp.dword_ += __ZLVM_WORD_SIZE;
-    writeWord(this, this->_sp.dword_, value);
+    this->_sp.word_ += __ZLVM_WORD_SIZE;
+    writeWord(this, this->_sp.word_, value);
 }
 
 bool notError(struct VirtualMachine* vm) {
@@ -365,6 +424,9 @@ void doOperation(struct VirtualMachine* vm, enum Operation op, word left, word r
 }
 
 void interrupt(struct VirtualMachine* vm, word code) {
+    if (code == 0xFF) {
+        setState(vm, S_HALTED);
+    }
     // TODO: прерывания :)))
 }
 

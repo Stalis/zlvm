@@ -11,6 +11,11 @@ inline static void line_to_lower(char* line) {
     for (; *p; ++p) *p = (char) tolower(*p);
 }
 
+inline static void line_to_upper(char* line) {
+    char* p = line;
+    for (; *p; ++p) *p = (char) toupper(*p);
+}
+
 struct Instruction parseLine(char* line) {
     enum Opcode op = parseOpcode(strtok(line, partsDelimiters));
     enum Condition cond = parseCondition(strtok(NULL, partsDelimiters));
@@ -77,72 +82,13 @@ enum Opcode parseOpcode(char* mnemonic) {
     if (mnemonic == NULL)
         return NOP;
     else
-        line_to_lower(mnemonic);
+        line_to_upper(mnemonic);
 
-#define CHECK(str, code) \
-    if (strcmp(mnemonic, str) == 0) \
-        return code
-
-    CHECK("nop", NOP);
-    CHECK("pop", POP);
-    CHECK("popr", POPR);
-    CHECK("pushr", PUSHR);
-    CHECK("pushi", PUSHI);
-    CHECK("dup", DUP);
-
-    CHECK("movr", MOVR);
-    CHECK("movi", MOVI);
-
-    CHECK("addr", ADDR);
-    CHECK("subr", SUBR);
-    CHECK("mulr", MULR);
-    CHECK("divr", DIVR);
-    CHECK("modr", MODR);
-
-    CHECK("addi", ADDI);
-    CHECK("subi", SUBI);
-    CHECK("muli", MULI);
-    CHECK("divi", DIVI);
-    CHECK("modi", MODI);
-
-    CHECK("int", INT);
-    CHECK("syscall", SYSCALL);
-
-    CHECK("jmp", JMP);
-    CHECK("not", NOT);
-
-    CHECK("andr", ANDR);
-    CHECK("orr", ORR);
-    CHECK("xorr", XORR);
-    CHECK("nandr", NANDR);
-    CHECK("norr", NORR);
-
-    CHECK("andi", ANDI);
-    CHECK("ori", ORI);
-    CHECK("xori", XORI);
-    CHECK("nandi", NANDI);
-    CHECK("nori", NORI);
-
-    CHECK("inc", INC);
-    CHECK("dec", DEC);
-
-    CHECK("loadr", LOADR);
-    CHECK("storer", STORER);
-
-    CHECK("loadi", LOADI);
-    CHECK("storei", STOREI);
-
-    CHECK("jmpal", JMPAL);
-    CHECK("ret", RET);
-    //CHECK("reserved", RESERVED);
-
-    CHECK("cmpr", CMPR);
-    CHECK("cmpi", CMPI);
-
-    CHECK("halt", HALT);
-
-    return NOP;
-#undef CHECK
+    enum Opcode res = string_to_opcode(mnemonic);
+    if (res == OPCODE_TOTAL) {
+        // TODO: Error handling
+    }
+    return res;
 }
 
 enum Condition parseCondition(char* mnemonic) {

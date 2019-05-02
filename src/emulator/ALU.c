@@ -79,18 +79,23 @@ static inline bool isSignedAddOverflow(sword left, sword right, sword result) {
     if ((left > 0 && right > 0 && result < 0) || (left < 0 && right < 0 && result > 0)) {
         return true;
     }
+    if (((sdword) left + (sdword) right) != result) {
+        return true;
+    }
     return false;
 }
 
 static inline bool isSignedMulOverflow(sword left, sword right, sword result) {
+    if (((sdword) left * (sdword) right) != result) {
+        return true;
+    }
     return false;
 }
 
 static inline bool isSignedDivOverflow(sword left, sword right, sword result) {
-    return false;
-}
-
-static inline bool isSignedDivCarry(sword left, sword right, sword result) {
+    if (((sdword) left / (sdword) right) != result) {
+        return true;
+    }
     return false;
 }
 
@@ -111,7 +116,6 @@ static void alu_setSignedFlags(struct ALU* alu) {
             break;
         case OP_SDIV:
             alu->flags_.V = isSignedDivOverflow(left, right, result);
-            alu->flags_.C = isSignedDivCarry(left, right, result);
             break;
         case OP_SMOD:
             break;
@@ -120,8 +124,50 @@ static void alu_setSignedFlags(struct ALU* alu) {
     }
 }
 
-static void alu_setUnsignedFlags(struct ALU* alu) {
+static inline bool isUnsignedAddOverflow(word left, word right, word result) {
+    if (((dword) left + (dword) right) != result) {
+        return true;
+    }
+    return false;
+}
 
+static inline bool isUnsignedMulOverflow(word left, word right, word result) {
+    if (((dword) left * (dword) right) != result) {
+        return true;
+    }
+    return false;
+}
+
+static inline bool isUnsignedDivOverflow(word left, word right, word result) {
+    if (((dword) left * (dword) right) != result) {
+        return true;
+    }
+    return false;
+}
+
+static void alu_setUnsignedFlags(struct ALU* alu) {
+    word left = alu->left_;
+    word right = alu->right_;
+    word result = alu->result_;
+
+    switch (alu->op_) {
+        case OP_ADD:
+            alu->flags_.C = isUnsignedAddOverflow(left, right, result);
+            break;
+        case OP_SUB:
+            alu->flags_.C = isUnsignedAddOverflow(left, ~right, result);
+            break;
+        case OP_MUL:
+            alu->flags_.C = isUnsignedMulOverflow(left, right, result);
+            break;
+        case OP_DIV:
+            alu->flags_.C = isUnsignedDivOverflow(left, right, result);
+            break;
+        case OP_MOD:
+            break;
+        default:
+            break;
+    }
 }
 
 void alu_setFlags(struct ALU* alu) {

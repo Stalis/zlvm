@@ -9,9 +9,9 @@
 
 union Value {
     byte byte_;
-    hword word_;
-    word dword_;
-//    qword qword_;
+    hword hword_;
+    word word_;
+//    dword dword_;
 };
 
 #endif //ZLVM_C_REGISTER_H
