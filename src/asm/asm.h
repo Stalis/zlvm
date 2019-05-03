@@ -9,6 +9,7 @@
 
 static const char lineDelimiters[] = "\n\r";
 static const char partsDelimiters[] = " \t";
+static const char commentDelimiters[] = ";";
 
 static const char HexHeader[] = "0X";
 static const char OctHeader[] = "0O";

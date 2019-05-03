@@ -18,6 +18,11 @@ enum Condition {
     C_OVERFLOW,
     C_CARRY,
     C_SIGNED,
+    C_NOT_NEGATIVE,
+    C_NOT_ZERO,
+    C_NOT_OVERFLOW,
+    C_NOT_CARRY,
+    C_NOT_SIGNED,
     C_TOTAL,
 };
 

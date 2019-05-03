@@ -289,6 +289,7 @@ bool checkCondition(struct VirtualMachine* vm, enum Condition condition) {
             return !((vm->_cpsr.Z) || ((vm->_cpsr.N) ^ (vm->_cpsr.V)));
         case C_GREATER_OR_EQUALS:
             return !((vm->_cpsr.N) ^ (vm->_cpsr.V));
+
         case C_NEGATIVE:
             return vm->_cpsr.N;
         case C_ZERO:
@@ -299,6 +300,17 @@ bool checkCondition(struct VirtualMachine* vm, enum Condition condition) {
             return vm->_cpsr.C;
         case C_SIGNED:
             return vm->_cpsr.S;
+
+        case C_NOT_NEGATIVE:
+            return !vm->_cpsr.N;
+        case C_NOT_ZERO:
+            return !vm->_cpsr.Z;
+        case C_NOT_OVERFLOW:
+            return !vm->_cpsr.V;
+        case C_NOT_CARRY:
+            return !vm->_cpsr.C;
+        case C_NOT_SIGNED:
+            return !vm->_cpsr.S;
         default:
             setState(vm, S_ERR_INVALID_CONDITION);
             return false;

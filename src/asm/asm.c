@@ -160,6 +160,12 @@ bool parseCondition(char* mnemonic, enum Condition* res) {
     CHECK("c", C_CARRY);
     CHECK("s", C_SIGNED);
 
+    CHECK("nn", C_NOT_NEGATIVE);
+    CHECK("nz", C_NOT_ZERO);
+    CHECK("nv", C_NOT_OVERFLOW);
+    CHECK("nc", C_NOT_CARRY);
+    CHECK("ns", C_NOT_SIGNED);
+
     return false;
 #undef CHECK
 }
