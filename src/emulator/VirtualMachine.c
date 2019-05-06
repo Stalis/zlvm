@@ -433,10 +433,15 @@ void doOperation(struct VirtualMachine* vm, enum Operation op, word left, word r
 }
 
 void interrupt(struct VirtualMachine* vm, word code) {
-    if (code == 0xFF) {
-        setState(vm, S_HALTED);
-    }
     // TODO: прерывания :)))
+    switch (code) {
+        case 0x80:
+            printf("%s", &vm->_memory[vm->_registers[0].word_]);
+        case 0xFF:
+            setState(vm, S_HALTED);
+        default:
+            break;
+    }
 }
 
 void syscall(struct VirtualMachine* vm) {
