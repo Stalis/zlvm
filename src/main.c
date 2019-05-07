@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "emulator/VirtualMachine.h"
 #include "asm/asm.h"
+#include "asm/Lexer.h"
 
 const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
 const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.s";
@@ -9,12 +10,16 @@ byte* readFile(const char* path, size_t* size);
 byte* readSource(const char* path, size_t* size);
 void printState(enum State state);
 
+void test_parser(const char* path);
+
 int main() {
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
-    printf("Size of machine hword: %lu bytes\n", __ZLVM_WORD_SIZE);
-    printf("Operations count: %d\n", NOP); //OPCODE_TOTAL);
+    printf("Size of machine word: %lu bytes\n", __ZLVM_WORD_SIZE);
+    printf("Operations count: %d\n", OPCODE_TOTAL);
     printf("\n");
 
+    test_parser(test_source);
+/*
     byte* buffer;
     size_t size;
     //size = readFile(test_file, &buffer);
@@ -30,6 +35,7 @@ int main() {
     printState(state);
 
     return state;
+    */
 }
 
 byte* readFile(const char* path, size_t* __size) {
@@ -95,4 +101,34 @@ void printState(enum State state) {
             printf("Unknown error");
     }
     printf("\n");
+}
+
+void test_parser(const char* path) {
+    const size_t step_size = 1024;
+    size_t cur_size = step_size;
+    char* source = (char*) malloc(sizeof(char) * cur_size);
+    size_t i = 0;
+
+    FILE* file = fopen(path, "r");
+    while (!feof(file)) {
+        source[i] = (char) fgetc(file);
+        i++;
+
+        if (i >= cur_size) {
+            cur_size += step_size;
+            source = realloc(source, sizeof(char) * cur_size);
+        }
+    }
+    fclose(file);
+
+    struct LexerState lexer;
+    lexer_init(&lexer, source);
+
+    struct Token* tok = lexer_read_token(&lexer);
+    while (tok != NULL) {
+        token_print(tok);
+        tok = lexer_read_token(&lexer);
+    }
+
+    lexer_clear(&lexer);
 }
