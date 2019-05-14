@@ -10,18 +10,14 @@
 #include "CPSR.h"
 #include "../common/Instruction.h"
 #include "ALU.h"
+#include "../common/Registers.h"
 
 static const size_t __ZLVM_MEMORY_SIZE = 1024;
 static const size_t __ZLVM_STACK_SIZE = 256;
-static const size_t __ZLVM_REGISTER_COUNT = 16;
+static const size_t __ZLVM_REGISTER_COUNT = R_TOTAL;
 static const size_t __ZLVM_WORD_SIZE = sizeof(word);
 
 struct VirtualMachine {
-    union Value _pc;
-    union Value _sp;
-    union Value _bp;
-    union Value _sc;
-    union Value _lp;
     union CPSR _cpsr;
     struct ALU _alu;
     union Value _registers[__ZLVM_REGISTER_COUNT];

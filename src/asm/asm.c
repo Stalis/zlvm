@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "../common/Types.h"
 #include "asm.h"
+#include "../common/Registers.h"
 
 inline static void line_to_lower(char* line) {
     char* p = line;
@@ -204,6 +205,53 @@ bool parseRegister(char* source, byte* res) {
         *res = parseByte(source + 1);
         return true;
     }
+
+#define CHECK(str, reg) \
+    if (strcmp(str, source) == 0) { \
+        *res = reg; \
+        return true; \
+    }
+
+    CHECK("zero", R_ZERO);
+    CHECK("at", R_AT);
+
+    CHECK("v0", R_V0);
+    CHECK("v1", R_V1);
+    CHECK("v2", R_V2);
+    CHECK("v3", R_V3);
+
+    CHECK("a0", R_A0);
+    CHECK("a1", R_A1);
+    CHECK("a2", R_A2);
+    CHECK("a3", R_A3);
+
+    CHECK("t0", R_T0);
+    CHECK("t1", R_T1);
+    CHECK("t2", R_T2);
+    CHECK("t3", R_T3);
+    CHECK("t4", R_T4);
+    CHECK("t5", R_T5);
+    CHECK("t6", R_T6);
+    CHECK("t7", R_T7);
+
+    CHECK("s0", R_S0);
+    CHECK("s1", R_S1);
+    CHECK("s2", R_S2);
+    CHECK("s3", R_S3);
+    CHECK("s4", R_S4);
+    CHECK("s5", R_S5);
+    CHECK("s6", R_S6);
+    CHECK("s7", R_S7);
+
+    CHECK("k0", R_K0);
+
+    CHECK("sc", R_SC);
+    CHECK("lp", R_LP);
+    CHECK("sp", R_SP);
+    CHECK("bp", R_BP);
+    CHECK("pc", R_PC);
+
+#undef CHECK
 
     return false;
 }

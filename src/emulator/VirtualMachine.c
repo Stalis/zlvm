@@ -10,7 +10,7 @@
 static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
     for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns)
     {
-        for (byte j = 0; j < columns && j < __ZLVM_REGISTER_COUNT; j++)
+        for (byte j = 0; j < columns && (i + j) < __ZLVM_REGISTER_COUNT; j++)
         {
             printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
         }
@@ -18,7 +18,8 @@ static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
     }
 
     printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n",
-           vm->_pc.word_, vm->_sp.word_, vm->_bp.word_, vm->_sc.word_, vm->_lp.word_);
+           vm->_registers[R_PC].word_, vm->_registers[R_SP].word_, vm->_registers[R_BP].word_,
+           vm->_registers[R_SC].word_, vm->_registers[R_LP].word_);
     printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n",
            vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S, vm->_cpsr.ST);
 }
@@ -35,10 +36,12 @@ void initialize(struct VirtualMachine* this) {
         this->_memory[i] = 0;
     }
 
-    this->_pc.word_ = 0;
-    this->_sp.word_ = 0;
-    this->_bp.word_ = 0;
-    this->_sc.word_ = 0;
+    this->_registers[R_LP].word_ = 0;
+    this->_registers[R_PC].word_ = 0;
+    this->_registers[R_SP].word_ = 0;
+    this->_registers[R_BP].word_ = 0;
+    this->_registers[R_SC].word_ = 0;
+
     this->_cpsr.value_.word_ = 0;
     setState(this, S_NORMAL);
 }
@@ -56,7 +59,7 @@ void loadDump(struct VirtualMachine* vm, byte* program, size_t size) {
 }
 
 enum State run(struct VirtualMachine* vm) {
-    vm->_pc.word_ = __ZLVM_STACK_SIZE; // set to end of stack
+    vm->_registers[R_PC].word_ = __ZLVM_STACK_SIZE; // set to end of stack
     while (notError(vm) && !checkState(vm, S_HALTED))
     {
         runInstruction(vm, fetchInstruction(vm));
@@ -68,7 +71,7 @@ enum State run(struct VirtualMachine* vm) {
 }
 
 byte fetchByte(struct VirtualMachine* vm) {
-    return readByte(vm, vm->_pc.word_++);
+    return readByte(vm, vm->_registers[R_PC].word_++);
 }
 
 struct Instruction fetchInstruction(struct VirtualMachine* vm) {
@@ -228,10 +231,10 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             goto __alu_write_result;
 
         case LOADB:
-            reg1->word_ = readByte(vm, reg2->word_ + imm);
+            reg1->byte_ = readByte(vm, reg2->word_ + imm);
             break;
         case LOADH:
-            reg1->word_ = readHword(vm, reg2->word_ + imm);
+            reg1->hword_ = readHword(vm, reg2->word_ + imm);
             break;
         case LOADW:
             reg1->word_ = readWord(vm, reg2->word_ + imm);
@@ -255,12 +258,12 @@ void runInstruction(struct VirtualMachine* vm, struct Instruction instruction) {
             break;
 
         case JMPAL:
-            vm->_lp.word_ = vm->_pc.word_;
+            vm->_registers[R_LP].word_ = vm->_registers[R_PC].word_;
         case JMP:
-            vm->_pc.word_ = imm;
+            vm->_registers[R_PC].word_ = imm;
             break;
         case RET:
-            vm->_pc.word_ = vm->_lp.word_;
+            vm->_registers[R_PC].word_ = vm->_registers[R_LP].word_;
             break;
 
         case CMPI:
@@ -415,24 +418,24 @@ void writeDword(struct VirtualMachine* this, size_t address, dword value) {
 }
 
 word popWord(struct VirtualMachine* this) {
-    if ((sword) (this->_sp.word_ - __ZLVM_WORD_SIZE) < 0)
+    if ((sword) (this->_registers[R_SP].word_ - __ZLVM_WORD_SIZE) < 0)
     {
         setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
-    word res = readWord(this, this->_sp.word_);
-    this->_sp.word_ -= __ZLVM_WORD_SIZE;
+    word res = readWord(this, this->_registers[R_SP].word_);
+    this->_registers[R_SP].word_ -= __ZLVM_WORD_SIZE;
     return res;
 }
 
 void pushWord(struct VirtualMachine* this, word value) {
-    if (this->_sp.word_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE)
+    if (this->_registers[R_SP].word_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE)
     {
         setState(this, S_ERR_STACK_OVERFLOW);
         return;
     }
-    this->_sp.word_ += __ZLVM_WORD_SIZE;
-    writeWord(this, this->_sp.word_, value);
+    this->_registers[R_SP].word_ += __ZLVM_WORD_SIZE;
+    writeWord(this, this->_registers[R_SP].word_, value);
 }
 
 bool notError(struct VirtualMachine* vm) {
@@ -470,10 +473,29 @@ void doOperation(struct VirtualMachine* vm, enum Operation op, word left, word r
 
 void interrupt(struct VirtualMachine* vm, word code) {
     // TODO: прерывания :)))
-    switch (code)
+}
+
+void syscall(struct VirtualMachine* vm) {
+    // TODO: софтовые прерывания :)))
+    switch (vm->_registers[R_SC].word_)
     {
+        case 0x01:
+            printf("%d", vm->_registers[R_A0].word_);
+            break;
+        case 0x02:
+            printf("%c", vm->_memory[vm->_registers[R_A0].word_]);
+            break;
         case 0x10:
-            printf("%c", vm->_memory[vm->_registers[0].word_]);
+            vm->_registers[R_V0].word_ = (word) getc(stdin);
+            break;
+        case 0x11:
+            for (size_t i = vm->_registers[R_A0].word_; i < vm->_registers[R_A1].word_; i++)
+            {
+                char buf = (char) getc(stdin);
+                vm->_memory[i] = (byte) buf;
+                if (buf == EOF || buf == '\0' || buf == '\n')
+                    break;
+            }
             break;
         case 0xFF:
             setState(vm, S_HALTED);
@@ -481,8 +503,4 @@ void interrupt(struct VirtualMachine* vm, word code) {
         default:
             break;
     }
-}
-
-void syscall(struct VirtualMachine* vm) {
-    // TODO: софтовые прерывания :)))
 }
