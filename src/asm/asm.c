@@ -28,32 +28,40 @@ struct Instruction parseLine(char* line) {
     byte* preg1 = NULL;
 
     char* part = strtok(line, partsDelimiters);
-    if (!parseOpcode(part, &op)) {
+    if (!parseOpcode(part, &op))
+    {
         exit(EXIT_CODE_INVALID_OPERATION);
     }
 
     part = strtok(NULL, partsDelimiters);
-    while (NULL != part) {
-        if (parseCondition(part, &cond)) {
+    while (NULL != part)
+    {
+        if (parseCondition(part, &cond))
+        {
             goto __next_part;
         }
 
         byte reg = 0;
-        if (parseRegister(part, &reg)) {
-            if (NULL == preg1) {
+        if (parseRegister(part, &reg))
+        {
+            if (NULL == preg1)
+            {
                 reg1 = reg;
                 preg1 = &reg1;
-            } else {
+            }
+            else
+            {
                 reg2 = reg;
             }
             goto __next_part;
         }
 
-        if (parseImmediate(part, &imm)) {
+        if (parseImmediate(part, &imm))
+        {
             goto __next_part;
         }
 
-        __next_part:
+    __next_part:
         part = strtok(NULL, partsDelimiters);
     }
 
@@ -75,13 +83,15 @@ char** getLines(char* source, size_t* lines_count) {
     size_t i = 0;
 
     char* line = strtok(source, lineDelimiters);
-    while (NULL != line) {
+    while (NULL != line)
+    {
         if (strlen(line) == 0)
             continue;
 
         lines[i] = line;
         i++;
-        if (i >= cur_size) {
+        if (i >= cur_size)
+        {
             cur_size += step_size;
             lines = (char**) realloc(lines, sizeof(char*) * cur_size);
         }
@@ -97,7 +107,8 @@ struct Instruction* parseFile(char* source, size_t* length) {
     char** lines = getLines(source, &lines_count);
     struct Instruction* instructions = (struct Instruction*) malloc(sizeof(struct Instruction) * lines_count);
 
-    for (size_t i = 0; i < lines_count; i++) {
+    for (size_t i = 0; i < lines_count; i++)
+    {
         instructions[i] = parseLine(lines[i]);
     }
 
@@ -114,21 +125,24 @@ byte* assembly(char* source, size_t* size) {
 }
 
 bool parseOpcode(char* mnemonic, enum Opcode* res) {
-    if (mnemonic == NULL) {
+    if (mnemonic == NULL)
+    {
         return false;
     }
     else
         line_to_upper(mnemonic);
 
     *res = string_to_opcode(mnemonic);
-    if (*res == OPCODE_TOTAL) {
+    if (*res == OPCODE_TOTAL)
+    {
         return false;
     }
     return true;
 }
 
 bool parseCondition(char* mnemonic, enum Condition* res) {
-    if (mnemonic == NULL) {
+    if (mnemonic == NULL)
+    {
         *res = C_UNCONDITIONAL;
         return true;
     }
@@ -136,7 +150,8 @@ bool parseCondition(char* mnemonic, enum Condition* res) {
         line_to_lower(mnemonic);
 
     size_t last = strlen(mnemonic) - 1;
-    if (mnemonic[last] == -1) {
+    if (mnemonic[last] == -1)
+    {
         mnemonic[last] = '\0';
     }
 
@@ -147,35 +162,45 @@ bool parseCondition(char* mnemonic, enum Condition* res) {
     }
 
     CHECK("un", C_UNCONDITIONAL);
-    CHECK("eq", C_EQUALS);
-    CHECK("ne", C_NOT_EQUALS);
+
+    CHECK("zs", C_ZERO_SET);
+    CHECK("eq", C_ZERO_SET);
+    CHECK("zc", C_ZERO_CLEAR);
+    CHECK("ne", C_ZERO_CLEAR);
+
+    CHECK("cs", C_CARRY_SET);
+    CHECK("hs", C_CARRY_SET); // unsigned higher or same
+    CHECK("cc", C_CARRY_CLEAR);
+    CHECK("lo", C_CARRY_CLEAR); // unsigned lower
+
+    CHECK("ns", C_NEGATIVE_SET);
+    CHECK("mi", C_NEGATIVE_SET);
+    CHECK("nc", C_NEGATIVE_CLEAR);
+    CHECK("pl", C_NEGATIVE_CLEAR);
+
+    CHECK("vs", C_OVERFLOW_SET);
+    CHECK("vc", C_OVERFLOW_CLEAR);
+
+    CHECK("ss", C_SIGNED_SET);
+    CHECK("sc", C_SIGNED_CLEAR);
+
     CHECK("gt", C_GREATER);
     CHECK("ge", C_GREATER_OR_EQUALS);
     CHECK("lt", C_LESS);
     CHECK("le", C_LESS_OR_EQUALS);
-
-    CHECK("n", C_NEGATIVE);
-    CHECK("z", C_ZERO);
-    CHECK("v", C_OVERFLOW);
-    CHECK("c", C_CARRY);
-    CHECK("s", C_SIGNED);
-
-    CHECK("nn", C_NOT_NEGATIVE);
-    CHECK("nz", C_NOT_ZERO);
-    CHECK("nv", C_NOT_OVERFLOW);
-    CHECK("nc", C_NOT_CARRY);
-    CHECK("ns", C_NOT_SIGNED);
 
     return false;
 #undef CHECK
 }
 
 bool parseRegister(char* source, byte* res) {
-    if (NULL == source) {
+    if (NULL == source)
+    {
         return false;
     }
 
-    if (source[0] == 'r') {
+    if (source[0] == 'r')
+    {
         *res = parseByte(source + 1);
         return true;
     }
@@ -184,7 +209,8 @@ bool parseRegister(char* source, byte* res) {
 }
 
 bool parseImmediate(char* source, word* res) {
-    if (NULL == source) {
+    if (NULL == source)
+    {
         return false;
     }
 
@@ -193,13 +219,20 @@ bool parseImmediate(char* source, word* res) {
 
     line_to_upper(base_header);
 
-    if (strcmp(base_header, HexHeader) == 0) {
+    if (strcmp(base_header, HexHeader) == 0)
+    {
         *res = parseWord(source + 2, 16);
-    } else if (strcmp(base_header, OctHeader) == 0) {
+    }
+    else if (strcmp(base_header, OctHeader) == 0)
+    {
         *res = parseWord(source + 2, 8);
-    } else if (strcmp(base_header, BinHeader) == 0) {
+    }
+    else if (strcmp(base_header, BinHeader) == 0)
+    {
         *res = parseWord(source + 2, 2);
-    } else {
+    }
+    else
+    {
         *res = parseWord(source, 10);
     }
 
