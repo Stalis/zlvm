@@ -9,6 +9,13 @@
 #include <stdlib.h>
 #include "Types.h"
 
+#define CRASH(msg) _crash(msg, __FILE__, __LINE__)
+
+static void _crash(const char* msg, const char* file, size_t line) {
+    fprintf(stderr, "Crash at %s:%lu: %s", file, line, msg);
+    exit(-1);
+}
+
 static inline void _errorCode(const char* msg, word code) {
     fprintf(stderr, "Error: %s", msg);
     exit(code);
