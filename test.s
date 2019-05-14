@@ -1,11 +1,12 @@
 NOP
 Pushi   1024
 dup
-popr    r2
+popr    $t1
 
-movr    r1   r2
-addr    r1   r2
-ret     c
+movr    $t0   $t1
+addr    $t0   $t1
+ret     cs
 jmpal   296
 
-int     c    0XFF
+movi     $sc   $r0  0xFF
+syscall

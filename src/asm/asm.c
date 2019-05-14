@@ -3,6 +3,7 @@
 //
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 #include "../common/Types.h"
 #include "asm.h"
 #include "../common/Registers.h"
@@ -17,6 +18,11 @@ inline static void line_to_upper(char* line) {
     for (; *p; ++p) *p = (char) toupper(*p);
 }
 
+inline static void delete_eof(char* str) {
+    char* p = str;
+    for(; *p; ++p) if (*p == EOF) *p = '\0';
+}
+
 struct Instruction parseLine(char* line) {
     bool error = false;
 
@@ -29,6 +35,7 @@ struct Instruction parseLine(char* line) {
     byte* preg1 = NULL;
 
     char* part = strtok(line, partsDelimiters);
+    delete_eof(line);
     if (!parseOpcode(part, &op))
     {
         exit(EXIT_CODE_INVALID_OPERATION);
@@ -199,7 +206,10 @@ bool parseRegister(char* source, byte* res) {
     {
         return false;
     }
+    if (source[0] != '$')
+        return false;
 
+    source += 1;
     if (source[0] == 'r')
     {
         *res = parseByte(source + 1);
