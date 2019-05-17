@@ -28,7 +28,13 @@ struct ALUFlags {
 struct ALU {
     word left_;
     word right_;
-    word result_;
+    union {
+        dword result_;
+        struct {
+            word hi;
+            word lo;
+        };
+    };
     enum Operation op_;
     struct ALUFlags flags_;
 };

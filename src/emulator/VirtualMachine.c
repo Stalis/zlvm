@@ -4,9 +4,7 @@
 #include "VirtualMachine.h"
 
 #if DEBUG
-
 #include <printf.h>
-
 static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
     for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns)
     {
@@ -23,7 +21,6 @@ static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
     printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n",
            vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S, vm->_cpsr.ST);
 }
-
 #endif
 
 void initialize(struct VirtualMachine* this) {
@@ -35,12 +32,6 @@ void initialize(struct VirtualMachine* this) {
     {
         this->_memory[i] = 0;
     }
-
-    this->_registers[R_LP].word_ = 0;
-    this->_registers[R_PC].word_ = 0;
-    this->_registers[R_SP].word_ = 0;
-    this->_registers[R_BP].word_ = 0;
-    this->_registers[R_SC].word_ = 0;
 
     this->_cpsr.value_.word_ = 0;
     setState(this, S_NORMAL);

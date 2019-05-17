@@ -22,6 +22,11 @@ enum State {
     S_TOTAL,
 };
 
+/**
+ * Check state for errors
+ * @param state
+ * @return `true` is state is error state
+ */
 static inline bool is_error(enum State state) {
     return (state >= S_ERR_BEGIN) && (state <= S_ERR_END);
 }

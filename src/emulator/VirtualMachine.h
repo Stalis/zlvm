@@ -24,8 +24,22 @@ struct VirtualMachine {
     byte _memory[__ZLVM_MEMORY_SIZE + __ZLVM_STACK_SIZE];
 };
 
+/**
+ * @brief Initialize virtual machine instance
+ */
 void initialize(struct VirtualMachine*);
+
+/**
+ * @brief Load dump to vm's memory
+ * @param program pointer to byte array of dump
+ * @param size size of dump
+ */
 void loadDump(struct VirtualMachine*, byte* program, size_t size);
+
+/**
+ * @brief Start vm
+ * @return exit state of vm
+ */
 enum State run(struct VirtualMachine*);
 
 byte fetchByte(struct VirtualMachine*);
