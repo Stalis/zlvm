@@ -4,7 +4,7 @@
 #include "asm/Lexer.h"
 
 const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
-const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.s";
+const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
 
 byte* readFile(const char* path, size_t* size);
 byte* readSource(const char* path, size_t* size);
@@ -19,6 +19,7 @@ int main() {
     printf("\n");
 
     test_parser(test_source);
+
 /*
     byte* buffer;
     size_t size;
@@ -35,7 +36,7 @@ int main() {
     printState(state);
 
     return state;
-    */
+*/
 }
 
 byte* readFile(const char* path, size_t* __size) {
