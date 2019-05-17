@@ -8,6 +8,7 @@
 #include "Lexer.h"
 
 static const char NEWLINE = '\n';
+static const char COMMA = ',';
 static const char COMMENT_MARK = ';';
 static const char LABEL_INIT_MARK = ':';
 static const char LABEL_USE_MARK = '#';
@@ -17,6 +18,7 @@ static const char STRING_QUOTE = '"';
 static const char CHAR_QUOTE = '\'';
 static const char DIGIT_DELIMITER = '_';
 
+static inline bool is_eof(char);
 static inline bool is_ignored_char(char);
 static inline bool is_id_char(char);
 static inline bool is_hex_char(char);
@@ -33,11 +35,34 @@ void lexer_init(struct LexerState* state, char* source) {
     state->_tokens = (struct TokenList*) malloc(sizeof(struct TokenList));
     state->_tokens->value = NULL;
     state->_tokens->next = NULL;
-    state->ptr = source;
+    state->source = source;
+    state->pos = 0;
+    state->line = 1;
+    state->col = 1;
+}
+
+char lexer_peek_char(struct LexerState* l) {
+    return l->source[l->pos];
+}
+
+char lexer_next_char(struct LexerState* l) {
+    char val = l->source[++l->pos];
+    if (val == '\n') {
+        l->line++;
+        l->col = 1;
+    } else {
+        l->col++;
+    }
+    return val;
+}
+
+char* lexer_ahead(struct LexerState* l) {
+    return (l->source + l->pos);
 }
 
 struct Token* lexer_read_token(struct LexerState* state) {
-    char* right = state->ptr;
+#define right (lexer_ahead(state))
+
     char* first;
     char* last = NULL;
     size_t value_size;
@@ -45,114 +70,129 @@ struct Token* lexer_read_token(struct LexerState* state) {
     enum TokenType type;
     struct Token* result;
 
-    while (is_ignored_char(c)) {
-        c = *(++right);
+    size_t pos = state->pos, line = state->line, col = state->col;
 
-        if (c == EOF || c == '\0') {
+
+    while (is_ignored_char(c))
+    {
+        c = lexer_next_char(state);
+
+        if (is_eof(c))
             return NULL;
-        }
     }
 
     first = right;
+    c = lexer_peek_char(state);
 
-    switch (c) {
+    switch (c)
+    {
         case NEWLINE:
-            c = *(++right);
+            c = lexer_next_char(state);
             type = TOK_NEWLINE;
             break;
 
+        case COMMA:
+            c = lexer_next_char(state);
+            type = TOK_COMMA;
+            break;
+
         case COMMENT_MARK:
-            c = *(++right);
-            first = right;
-            while (c != NEWLINE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (c != NEWLINE) c = lexer_next_char(state);
             type = TOK_COMMENT;
             break;
 
-        case LABEL_INIT_MARK:
-            c = *(++right);
-            first = right;
-            while (!is_ignored_char(c) && c != NEWLINE) c = *(++right);
-            type = TOK_LABEL_INIT;
-            break;
-
         case LABEL_USE_MARK:
-            c = *(++right);
-            first = right;
-            while (!is_ignored_char(c) && c != NEWLINE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
             type = TOK_LABEL_USE;
             break;
 
         case REGISTER_MARK:
-            c = *(++right);
-            first = right;
-            while (!is_ignored_char(c) && c != NEWLINE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
             type = TOK_REGISTER;
             break;
 
         case DIRECTIVE_MARK:
-            c = *(++right);
-            first = right;
-            while (!is_ignored_char(c) && c != NEWLINE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
             type = TOK_DIRECTIVE;
             break;
 
         case STRING_QUOTE:
-            c = *(++right);
-            first = right;
-            while (c != STRING_QUOTE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (c != STRING_QUOTE) c = lexer_next_char(state);
             type = TOK_STRING_LITERAL;
-            last = right++;
+            last = state->source + (state->pos++);
             break;
 
         case CHAR_QUOTE:
-            c = *(++right);
-            first = right;
-            while (c != CHAR_QUOTE) c = *(++right);
+            c = lexer_next_char(state);
+            first = state->source + state->pos;
+            while (c != CHAR_QUOTE) c = lexer_next_char(state);
             type = TOK_CHAR_LITERAL;
-            last = right++;
+            last = state->source + (state->pos++);
             break;
 
-        default: {
-            if (is_dec_char(c)) {
-                if (c == '0') {
+        default:
+        {
+            if (is_dec_char(c))
+            {
+                if (c == '0')
+                {
                     char mark = *(right + 1);
-                    switch (mark) {
+                    switch (mark)
+                    {
                         case 'X':
                         case 'x':
-                            right += 2;
-                            first = right;
-                            while (is_hex_char(c)) c = *(++right);
-                            type = TOK_INT_HEX;
-                            break;
-
                         case 'O':
                         case 'o':
-                            right += 2;
-                            first = right;
-                            while (is_oct_char(c)) c = *(++right);
-                            type = TOK_INT_OCT;
-                            break;
-
                         case 'B':
                         case 'b':
-                            right += 2;
+                            lexer_next_char(state); lexer_next_char(state);
                             first = right;
-                            while (is_bin_char(c)) c = *(++right);
-                            type = TOK_INT_BIN;
+                            if (mark == 'X' || mark == 'x') {
+                                while (is_hex_char(c)) c = lexer_next_char(state);
+                                type = TOK_INT_HEX;
+                            } else if (mark == 'O' || mark == 'o') {
+                                while (is_oct_char(c)) c = lexer_next_char(state);
+                                type = TOK_INT_OCT;
+                            } else {
+                                while (is_bin_char(c)) c = lexer_next_char(state);
+                                type = TOK_INT_BIN;
+                            }
                             break;
 
                         default:
                             goto __parse_int_dec;
                     }
-                } else {
-                    __parse_int_dec:
-                    while (is_dec_char(c)) c = *(++right);
+                }
+                else
+                {
+                __parse_int_dec:
+                    while (is_dec_char(c)) c = lexer_next_char(state);
                     type = TOK_INT_DEC;
                     break;
                 }
-            } else {
-                while (!is_ignored_char(c) && c != NEWLINE) c = *(++right);
-                type = TOK_ID;
+            }
+            else
+            {
+                while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
+                if (*(right - 1) == LABEL_INIT_MARK)
+                {
+                    last = right - 1;
+                    type = TOK_LABEL_INIT;
+                }
+                else
+                {
+                    type = TOK_ID;
+                }
             }
         }
             break;
@@ -167,7 +207,12 @@ struct Token* lexer_read_token(struct LexerState* state) {
     result->value = (char*) calloc(value_size + 1, sizeof(char));
     strncpy(result->value, first, value_size);
 
-    switch (result->type) {
+    result->pos = pos;
+    result->line = line;
+    result->col = col;
+
+    switch (result->type)
+    {
         case TOK_INT_HEX:
         case TOK_INT_DEC:
         case TOK_INT_OCT:
@@ -179,17 +224,21 @@ struct Token* lexer_read_token(struct LexerState* state) {
             break;
     }
 
-    state->ptr = right;
     tokenlist_add(state->_tokens, result);
     return result;
+#undef right
 }
 
 static void tokenlist_add(struct TokenList* list, struct Token* t) {
     struct TokenList* buf = list;
-    if (NULL == list->value) {
+    if (NULL == list->value)
+    {
         list->value = t;
-    } else {
-        while (buf->next != NULL) {
+    }
+    else
+    {
+        while (buf->next != NULL)
+        {
             buf = buf->next;
         }
         buf->next = calloc(1, sizeof(struct TokenList));
@@ -197,27 +246,31 @@ static void tokenlist_add(struct TokenList* list, struct Token* t) {
     }
 }
 
-static bool is_ignored_char(char c) {
+static inline bool is_eof(char c) {
+    return (c == EOF) || (c == '\0');
+}
+
+static inline bool is_ignored_char(char c) {
     return ((isspace(c) != 0) && (c != NEWLINE)) || (c == EOF) || (c == '\0');
 }
 
-static bool is_id_char(char c) {
+static inline bool is_id_char(char c) {
     return (isalpha(c) != 0 || c == DIGIT_DELIMITER);
 }
 
-static bool is_hex_char(char c) {
+static inline bool is_hex_char(char c) {
     return (isxdigit(c) != 0 || c == DIGIT_DELIMITER);
 }
 
-static bool is_dec_char(char c) {
+static inline bool is_dec_char(char c) {
     return (isdigit(c) != 0 || c == DIGIT_DELIMITER);
 }
 
-static bool is_oct_char(char c) {
+static inline bool is_oct_char(char c) {
     return ((c >= '0' && c <= '7') || c == DIGIT_DELIMITER);
 }
 
-static bool is_bin_char(char c) {
+static inline bool is_bin_char(char c) {
     return ((c >= '0' && c <= '1') || c == DIGIT_DELIMITER);
 }
 
@@ -225,8 +278,10 @@ static void remove_digit_delimiters(char* string, size_t __size) {
     char* buf = (char*) calloc(__size, sizeof(char));
     size_t buf_i = 0;
 
-    for (size_t i = 0; i < __size; i++) {
-        if (string[i] != DIGIT_DELIMITER) {
+    for (size_t i = 0; i < __size; i++)
+    {
+        if (string[i] != DIGIT_DELIMITER)
+        {
             buf[buf_i++] = string[i];
         }
     }
@@ -234,10 +289,12 @@ static void remove_digit_delimiters(char* string, size_t __size) {
 }
 
 static void tokenlist_free(struct TokenList* list) {
-    if (list->next != NULL) {
+    if (list->next != NULL)
+    {
         tokenlist_free(list->next);
     }
-    if (list->value != NULL) {
+    if (list->value != NULL)
+    {
         token_free(list->value);
     }
     free(list);

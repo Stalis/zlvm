@@ -8,10 +8,13 @@
 static inline const char* get_token_type_name(enum TokenType);
 
 void token_print(struct Token* t) {
-    if (t->type == TOK_NEWLINE) {
-        fprintf(stdout, "%12s[%2lu]\n", get_token_type_name(t->type), t->size);
-    } else {
-        fprintf(stdout, "%12s[%2lu] %s\n", get_token_type_name(t->type), t->size, t->value);
+    if (t->type == TOK_NEWLINE)
+    {
+        fprintf(stdout, "(%4d:%3d:%2d) %12s[%2lu]\n", t->pos, t->line, t->col, get_token_type_name(t->type), t->size);
+    }
+    else
+    {
+        fprintf(stdout, "(%4d:%3d:%2d) %12s[%2lu] %s\n", t->pos, t->line, t->col, get_token_type_name(t->type), t->size, t->value);
     }
 }
 
@@ -21,7 +24,8 @@ void token_free(struct Token* t) {
 }
 
 static inline const char* get_token_type_name(enum TokenType t) {
-    switch (t) {
+    switch (t)
+    {
         case TOK_COMMENT:
             return "COMMENT";
         case TOK_NEWLINE:
@@ -48,6 +52,8 @@ static inline const char* get_token_type_name(enum TokenType t) {
             return "INT_OCT";
         case TOK_INT_BIN:
             return "INT_BIN";
+        case TOK_COMMA:
+            return "COMMA";
     }
     return "UNKNOWN_TOKEN";
 }

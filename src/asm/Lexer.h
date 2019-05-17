@@ -13,11 +13,20 @@ struct TokenList {
 };
 
 struct LexerState {
-    char* ptr;
+    char* source;
     struct TokenList* _tokens;
+    size_t pos;
+    size_t line;
+    size_t col;
 };
 
 void lexer_init(struct LexerState*, char* source);
+
+char lexer_peek_char(struct LexerState*);
+
+char lexer_next_char(struct LexerState*);
+
+char* lexer_ahead(struct LexerState*);
 
 struct Token* lexer_read_token(struct LexerState*);
 
