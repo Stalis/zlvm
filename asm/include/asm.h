@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_ASM_H
 #define ZLVM_C_ASM_H
 
-#include "../common/Instruction.h"
+#include "../../emulator/include/Instruction.h"
 
 static const char lineDelimiters[] = "\n\r";
 static const char partsDelimiters[] = " \t";

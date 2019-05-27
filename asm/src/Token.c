@@ -2,19 +2,20 @@
 // Created by Stanislav on 2019-05-07.
 //
 
-#include "Token.h"
-#include <printf.h>
+#include "../include/Token.h"
 
 static inline const char* get_token_type_name(enum TokenType);
 
 void token_print(struct Token* t) {
     if (t->type == TOK_NEWLINE)
     {
-        fprintf(stdout, "(%4d:%3d:%2d) %12s[%2lu]\n", t->pos, t->line, t->col, get_token_type_name(t->type), t->size);
+        fprintf(stdout, "(%4lu:%3lu:%2lu) %12s[%2lu]\n", t->pos, t->line, t->col, get_token_type_name(t->type),
+                t->size);
     }
     else
     {
-        fprintf(stdout, "(%4d:%3d:%2d) %12s[%2lu] %s\n", t->pos, t->line, t->col, get_token_type_name(t->type), t->size, t->value);
+        fprintf(stdout, "(%4lu:%3lu:%2lu) %12s[%2lu] %s\n", t->pos, t->line, t->col, get_token_type_name(t->type),
+                t->size, t->value);
     }
 }
 

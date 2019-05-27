@@ -1,10 +1,10 @@
 //
 // Created by Stanislav on 2019-04-26.
 //
-#include "VirtualMachine.h"
+#include "../include/VirtualMachine.h"
+#include <printf.h>
 
 #if DEBUG
-#include <printf.h>
 static inline void printRegisters(struct VirtualMachine* vm, byte columns) {
     for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns)
     {

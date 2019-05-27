@@ -3,9 +3,9 @@
 //
 #include <string.h>
 #include <ctype.h>
-#include "../common/Types.h"
-#include "asm.h"
-#include "../common/Registers.h"
+#include "../../emulator/include/Types.h"
+#include "../../emulator/include/Registers.h"
+#include "../include/asm.h"
 
 inline static void line_to_lower(char* line) {
     char* p = line;

@@ -5,8 +5,9 @@
 #ifndef ZLVM_C_CPSR_H
 #define ZLVM_C_CPSR_H
 
-#include "../common/Value.h"
-#include "../common/State.h"
+#include "../include/Types.h"
+#include "../include/State.h"
+#include "Value.h"
 
 union CPSR {
     union Value value_;

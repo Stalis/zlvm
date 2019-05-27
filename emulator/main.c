@@ -1,16 +1,13 @@
 #include <stdio.h>
-#include "emulator/VirtualMachine.h"
-#include "asm/asm.h"
-#include "asm/Lexer.h"
+#include "include/VirtualMachine.h"
+#include "../asm/include/asm.h"
 
-const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
-const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
+static const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
+static const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
 
-byte* readFile(const char* path, size_t* size);
-byte* readSource(const char* path, size_t* size);
-void printState(enum State state);
-
-void test_parser(const char* path);
+static byte* readFile(const char* path, size_t* size);
+static byte* readSource(const char* path, size_t* size);
+static void printState(enum State state);
 
 int main() {
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
@@ -18,9 +15,6 @@ int main() {
     printf("Operations count: %d\n", OPCODE_TOTAL);
     printf("\n");
 
-    test_parser(test_source);
-
-/*
     byte* buffer;
     size_t size;
     //size = readFile(test_file, &buffer);
@@ -36,10 +30,9 @@ int main() {
     printState(state);
 
     return state;
-*/
 }
 
-byte* readFile(const char* path, size_t* __size) {
+static byte* readFile(const char* path, size_t* __size) {
     size_t size = 0;
     byte* buffer = (byte*) malloc(__ZLVM_MEMORY_SIZE);
     FILE* file = fopen(path, "rb");
@@ -54,7 +47,7 @@ byte* readFile(const char* path, size_t* __size) {
     return buffer;
 }
 
-byte* readSource(const char* path, size_t* size) {
+static byte* readSource(const char* path, size_t* size) {
     const size_t step_size = 1024;
     size_t cur_size = step_size;
     char* source = (char*) malloc(sizeof(char) * cur_size);
@@ -75,7 +68,7 @@ byte* readSource(const char* path, size_t* size) {
     return assembly(source, size);
 }
 
-void printState(enum State state) {
+static void printState(enum State state) {
     switch (state) {
         case S_NORMAL:
             printf("Normal");
@@ -102,34 +95,4 @@ void printState(enum State state) {
             printf("Unknown error");
     }
     printf("\n");
-}
-
-void test_parser(const char* path) {
-    const size_t step_size = 1024;
-    size_t cur_size = step_size;
-    char* source = (char*) malloc(sizeof(char) * cur_size);
-    size_t i = 0;
-
-    FILE* file = fopen(path, "r");
-    while (!feof(file)) {
-        source[i] = (char) fgetc(file);
-        i++;
-
-        if (i >= cur_size) {
-            cur_size += step_size;
-            source = realloc(source, sizeof(char) * cur_size);
-        }
-    }
-    fclose(file);
-
-    struct LexerState lexer;
-    lexer_init(&lexer, source);
-
-    struct Token* tok = lexer_read_token(&lexer);
-    while (tok != NULL) {
-        token_print(tok);
-        tok = lexer_read_token(&lexer);
-    }
-
-    lexer_clear(&lexer);
 }

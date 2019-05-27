@@ -5,7 +5,7 @@
 #include <memory.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "Lexer.h"
+#include "../include/Lexer.h"
 
 static const char NEWLINE = '\n';
 static const char COMMA = ',';

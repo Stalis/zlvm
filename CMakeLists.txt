@@ -1,26 +1,26 @@
 cmake_minimum_required(VERSION 3.13)
 project(zlvm_c C)
 
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/zlvm/)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(zlvm
-        src/main.c
+set(BIN_PATH bin)
+set(LIB_PATH lib)
+set(INCLUDE_PATH include)
 
-        src/common/Value.h
-        src/common/Types.h
-        src/common/State.h
-        src/common/Instruction.h
-        src/common/Condition.h
-        src/common/Opcode.h
-        src/common/Error.h
-        src/common/Registers.h
+add_subdirectory(emulator)
+add_subdirectory(asm)
 
-        src/emulator/CPSR.h
-        src/emulator/ALU.h              src/emulator/ALU.c
-        src/emulator/VirtualMachine.h   src/emulator/VirtualMachine.c
+install(TARGETS zlvm zlvm-static zlvm-bin
+        RUNTIME DESTINATION ${BIN_PATH}
+        LIBRARY DESTINATION ${LIB_PATH}
+        ARCHIVE DESTINATION ${LIB_PATH}/static
+        PUBLIC_HEADER DESTINATION ${INCLUDE_PATH})
 
-        src/asm/asm.c        src/asm/asm.h
-        src/asm/Token.c      src/asm/Token.h
-        src/asm/Lexer.c      src/asm/Lexer.h
+install(TARGETS zlasm zlasm-static zlasm-bin
+        RUNTIME DESTINATION ${BIN_PATH}
+        LIBRARY DESTINATION ${LIB_PATH}
+        ARCHIVE DESTINATION ${LIB_PATH}/static
+        PUBLIC_HEADER DESTINATION ${INCLUDE_PATH}/asm)

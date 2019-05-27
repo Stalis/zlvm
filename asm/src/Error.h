@@ -2,14 +2,14 @@
 // Created by Stanislav on 2019-05-06.
 //
 
-#ifndef ZLVM_C_ERROR_H
-#define ZLVM_C_ERROR_H
+#ifndef ZLASM_C_ERROR_H
+#define ZLASM_C_ERROR_H
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "Types.h"
+#include "../../emulator/include/Types.h"
 
-#define CRASH(msg) _crash(msg, __FILE__, __LINE__)
+#define ZLVM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 
 static void _crash(const char* msg, const char* file, size_t line) {
     fprintf(stderr, "Crash at %s:%lu: %s", file, line, msg);
@@ -25,4 +25,4 @@ static inline void _error(const char* msg) {
     _errorCode(msg, 0);
 }
 
-#endif //ZLVM_C_ERROR_H
+#endif //ZLASM_C_ERROR_H
