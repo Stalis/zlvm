@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include "../../emulator/include/Types.h"
 
-#define ZLVM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
+#define ZLASM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 
 static void _crash(const char* msg, const char* file, size_t line) {
     fprintf(stderr, "Crash at %s:%lu: %s", file, line, msg);

@@ -16,10 +16,10 @@ add_library(zlvm SHARED $<TARGET_OBJECTS:vmobjlib>)
 add_library(zlvm-static STATIC $<TARGET_OBJECTS:vmobjlib>)
 set_target_properties(zlvm zlvm-static
         PROPERTIES PUBLIC_HEADER "${EXPORT_H}")
-target_link_libraries(zlvm zlvm-static zlasm)
+target_link_libraries(zlvm zlvm-static)
 
 add_executable(zlvm-bin main.c)
-target_link_libraries(zlvm-bin zlvm)
+target_link_libraries(zlvm-bin zlvm zlasm)
 
 set_target_properties(zlvm-bin zlvm-static
         PROPERTIES OUTPUT_NAME zlvm)

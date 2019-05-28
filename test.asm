@@ -39,7 +39,7 @@ add_until_carry.loop:
 .endproc
 
 ; prints null-terminated string with default 0x10 cpu interrupt
-; @param $a0 address of first char of string
+; @param $a0 address of _first char of string
 .proc print_string
         xorr    $t0, $t0
 
@@ -56,7 +56,7 @@ print_string.end:
 .endproc
 
 ; prints null-terminated string with print_string and print line break after
-; @param $a0 address of first char of string
+; @param $a0 address of _first char of string
 .proc print_line
         jmpal   #print_string
         pushr   $a0

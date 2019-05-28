@@ -17,6 +17,7 @@ inline static void line_to_upper(char* line) {
     for (; *p; ++p) *p = (char) toupper(*p);
 }
 
+
 struct Instruction parseLine(char* line) {
     bool error = false;
 

@@ -2,6 +2,7 @@
 // Created by Stanislav on 2019-04-26.
 //
 #include "../include/VirtualMachine.h"
+#include "VirtualMachine.h"
 #include <printf.h>
 
 #if DEBUG

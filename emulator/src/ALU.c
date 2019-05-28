@@ -2,7 +2,7 @@
 // Created by Stanislav on 2019-04-26.
 //
 
-#include "ALU.h"
+#include "../include/ALU.h"
 
 void alu_compute(struct ALU* alu) {
     switch (alu->op_)

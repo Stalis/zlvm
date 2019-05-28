@@ -31,6 +31,16 @@ static void remove_digit_delimiters(char*, size_t);
 static void tokenlist_add(struct TokenList*, struct Token*);
 static void tokenlist_free(struct TokenList*);
 
+struct Token* tokenStream_read(token_stream_t* stream) {
+    struct Token* buf = stream->_first->value;
+    stream->_first = stream->_first->next;
+    return buf;
+}
+
+bool tokenStream_isEof(token_stream_t* stream) {
+    return NULL == stream->_first || NULL == stream->_first->value;
+}
+
 void lexer_init(struct LexerState* state, char* source) {
     state->_tokens = (struct TokenList*) malloc(sizeof(struct TokenList));
     state->_tokens->value = NULL;
@@ -41,17 +51,17 @@ void lexer_init(struct LexerState* state, char* source) {
     state->col = 1;
 }
 
-char lexer_peek_char(struct LexerState* l) {
-    return l->source[l->pos];
+char lexer_peekChar(struct LexerState* s) {
+    return s->source[s->pos];
 }
 
-char lexer_next_char(struct LexerState* l) {
-    char val = l->source[++l->pos];
+char lexer_nextChar(struct LexerState* s) {
+    char val = s->source[++s->pos];
     if (val == '\n') {
-        l->line++;
-        l->col = 1;
+        s->line++;
+        s->col = 1;
     } else {
-        l->col++;
+        s->col++;
     }
     return val;
 }
@@ -60,8 +70,8 @@ char* lexer_ahead(struct LexerState* l) {
     return (l->source + l->pos);
 }
 
-struct Token* lexer_read_token(struct LexerState* state) {
-#define right (lexer_ahead(state))
+struct Token* lexer_readToken(struct LexerState* s) {
+#define right (lexer_ahead(s))
 
     char* first;
     char* last = NULL;
@@ -70,74 +80,74 @@ struct Token* lexer_read_token(struct LexerState* state) {
     enum TokenType type;
     struct Token* result;
 
-    size_t pos = state->pos, line = state->line, col = state->col;
+    size_t pos = s->pos, line = s->line, col = s->col;
 
 
     while (is_ignored_char(c))
     {
-        c = lexer_next_char(state);
+        c = lexer_nextChar(s);
 
         if (is_eof(c))
             return NULL;
     }
 
     first = right;
-    c = lexer_peek_char(state);
+    c = lexer_peekChar(s);
 
     switch (c)
     {
         case NEWLINE:
-            c = lexer_next_char(state);
+            c = lexer_nextChar(s);
             type = TOK_NEWLINE;
             break;
 
         case COMMA:
-            c = lexer_next_char(state);
+            c = lexer_nextChar(s);
             type = TOK_COMMA;
             break;
 
         case COMMENT_MARK:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (c != NEWLINE) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (c != NEWLINE) c = lexer_nextChar(s);
             type = TOK_COMMENT;
             break;
 
         case LABEL_USE_MARK:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
             type = TOK_LABEL_USE;
             break;
 
         case REGISTER_MARK:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
             type = TOK_REGISTER;
             break;
 
         case DIRECTIVE_MARK:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
             type = TOK_DIRECTIVE;
             break;
 
         case STRING_QUOTE:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (c != STRING_QUOTE) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (c != STRING_QUOTE) c = lexer_nextChar(s);
             type = TOK_STRING_LITERAL;
-            last = state->source + (state->pos++);
+            last = s->source + (s->pos++);
             break;
 
         case CHAR_QUOTE:
-            c = lexer_next_char(state);
-            first = state->source + state->pos;
-            while (c != CHAR_QUOTE) c = lexer_next_char(state);
+            c = lexer_nextChar(s);
+            first = s->source + s->pos;
+            while (c != CHAR_QUOTE) c = lexer_nextChar(s);
             type = TOK_CHAR_LITERAL;
-            last = state->source + (state->pos++);
+            last = s->source + (s->pos++);
             break;
 
         default:
@@ -155,16 +165,17 @@ struct Token* lexer_read_token(struct LexerState* state) {
                         case 'o':
                         case 'B':
                         case 'b':
-                            lexer_next_char(state); lexer_next_char(state);
+                            lexer_nextChar(s);
+                            lexer_nextChar(s);
                             first = right;
                             if (mark == 'X' || mark == 'x') {
-                                while (is_hex_char(c)) c = lexer_next_char(state);
+                                while (is_hex_char(c)) c = lexer_nextChar(s);
                                 type = TOK_INT_HEX;
                             } else if (mark == 'O' || mark == 'o') {
-                                while (is_oct_char(c)) c = lexer_next_char(state);
+                                while (is_oct_char(c)) c = lexer_nextChar(s);
                                 type = TOK_INT_OCT;
                             } else {
-                                while (is_bin_char(c)) c = lexer_next_char(state);
+                                while (is_bin_char(c)) c = lexer_nextChar(s);
                                 type = TOK_INT_BIN;
                             }
                             break;
@@ -176,14 +187,14 @@ struct Token* lexer_read_token(struct LexerState* state) {
                 else
                 {
                 __parse_int_dec:
-                    while (is_dec_char(c)) c = lexer_next_char(state);
+                    while (is_dec_char(c)) c = lexer_nextChar(s);
                     type = TOK_INT_DEC;
                     break;
                 }
             }
             else
             {
-                while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_next_char(state);
+                while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
                 if (*(right - 1) == LABEL_INIT_MARK)
                 {
                     last = right - 1;
@@ -224,9 +235,15 @@ struct Token* lexer_read_token(struct LexerState* state) {
             break;
     }
 
-    tokenlist_add(state->_tokens, result);
+    tokenlist_add(s->_tokens, result);
     return result;
 #undef right
+}
+
+struct TokenStream* lexer_getStream(struct LexerState* s) {
+    struct TokenStream* res = malloc(sizeof(struct TokenStream));
+    res->_first = s->_tokens;
+    return res;
 }
 
 static void tokenlist_add(struct TokenList* list, struct Token* t) {

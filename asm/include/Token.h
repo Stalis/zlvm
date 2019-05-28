@@ -62,7 +62,7 @@ static inline dword token_get_int_value(struct Token* t) {
         case TOK_INT_BIN:
             return strtoull(t->value, NULL, 2);
         default:
-            ZLVM__CRASH("Not int token");
+            ZLASM__CRASH("Not int token");
     }
     return 0;
 }
@@ -87,7 +87,7 @@ static inline char token_get_char_value(char* t) {
             case '\\':
                 return '\\';
             default:
-                ZLVM__CRASH("Invalid escape character");
+                ZLASM__CRASH("Invalid escape character");
         }
     }
     return t[0];
@@ -121,7 +121,7 @@ static byte* token_get_raw_data(struct Token* t, size_t* __size) {
             *__size = sizeof(dword);
             break;
         default:
-            ZLVM__CRASH("Is not data token");
+            ZLASM__CRASH("Is not data token");
             break;
     }
     return res;

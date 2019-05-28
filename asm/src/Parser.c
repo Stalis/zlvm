@@ -10,7 +10,7 @@
 
 static struct LineList* get_last_line(struct LineList*);
 
-void context_init(struct ParserContext* ctx) {
+void parser_init(struct ParserContext* ctx) {
     ctx->lines = malloc(sizeof(struct LineList*));
     line_list_init(ctx->lines);
 
@@ -26,21 +26,21 @@ void context_init(struct ParserContext* ctx) {
     */
 }
 
-void context_read_tokens(struct ParserContext* ctx, struct TokenList* lst) {
+void parser_readTokens(struct ParserContext* ctx, struct TokenStream* stream) {
 #define THROW_ERROR(err) {\
-    char* msg = strcat(err, cur->value->value); \
-    ZLVM__CRASH(msg); }
+    char* msg = strcat(err, cur->value); \
+    ZLASM__TOKEN_CRASH(msg, cur); }
 
-    struct TokenList* cur = lst;
+    struct Token* cur = tokenStream_read(stream);
     struct LineList* line = get_last_line(ctx->lines);
 
     while (cur != NULL && cur->value != NULL)
     {
-        switch (cur->value->type)
+        switch (cur->type)
         {
             case TOK_LABEL_INIT:
-                line->value->label = strdup(cur->value->value);
-                line->value->size = cur->value->size;
+                line->value->label = strdup(cur->value);
+                line->value->size = cur->size;
                 break;
             case TOK_COMMENT:
                 break;
@@ -62,19 +62,19 @@ void context_read_tokens(struct ParserContext* ctx, struct TokenList* lst) {
                 {
                     line->value->type = L_STMT;
                     line->value->stmt = calloc(1, sizeof(struct Statement*));
-                    line->value->stmt->opcode = cur->value;
+                    line->value->stmt->opcode = cur;
                 }
                 else if (line->value->type == L_STMT)
                 {
                     if (line->value->stmt->cond == NULL)
                     {
-                        line->value->stmt->cond = cur->value;
+                        line->value->stmt->cond = cur;
                     }
                     else THROW_ERROR("Invalid condition using: ");
                 }
                 else if (line->value->type == L_DIR)
                 {
-                    directive_add_arg(line->value->dir, cur->value);
+                    directive_add_arg(line->value->dir, cur);
                 }
                 break;
 
@@ -82,9 +82,9 @@ void context_read_tokens(struct ParserContext* ctx, struct TokenList* lst) {
                 if (line->value->type == L_STMT)
                 {
                     if (line->value->stmt->reg1 == NULL)
-                        line->value->stmt->reg1 = cur->value;
+                        line->value->stmt->reg1 = cur;
                     else if (line->value->stmt->reg2 == NULL)
-                        line->value->stmt->reg1 = cur->value;
+                        line->value->stmt->reg1 = cur;
                     else THROW_ERROR("Invalid register using: ");
                 }
                 break;
@@ -94,7 +94,7 @@ void context_read_tokens(struct ParserContext* ctx, struct TokenList* lst) {
                 {
                     line->value->type = L_DIR;
                     line->value->dir = calloc(1, sizeof(struct Directive*));
-                    directive_init(line->value->dir, cur->value);
+                    directive_init(line->value->dir, cur);
                 }
                 break;
 
@@ -111,21 +111,21 @@ void context_read_tokens(struct ParserContext* ctx, struct TokenList* lst) {
                 if (line->value->type == L_STMT)
                 {
                     if (line->value->stmt->imm == NULL)
-                        line->value->stmt->imm = cur->value;
+                        line->value->stmt->imm = cur;
                     else THROW_ERROR("Invalid immediate using: ");
                 }
                 else if (line->value->type == L_DIR)
-                    directive_add_arg(line->value->dir, cur->value);
+                    directive_add_arg(line->value->dir, cur);
                 else THROW_ERROR("Invalid immediate using: ");
                 break;
         }
 
-        cur = cur->next;
+        cur = tokenStream_read(stream);
     }
-#undef THROW_ERROR
+    free(stream);
 }
 
-void context_proc_directives(struct ParserContext* ctx) {
+void parser_procDirectives(struct ParserContext* ctx) {
     struct LineList* prev_line = NULL;
     struct LineList* line = ctx->lines;
     char* proc_context = NULL;
@@ -184,7 +184,7 @@ void context_proc_directives(struct ParserContext* ctx) {
                 case DIR_ENDMACRO:
                     break;
                 default:
-                    ZLVM__CRASH("Invalid directive");
+                    ZLASM__CRASH("Invalid directive");
             }
         }
         prev_line = line;
@@ -193,10 +193,10 @@ void context_proc_directives(struct ParserContext* ctx) {
 #undef REMOVE_LINE
 }
 
-void context_clear(struct ParserContext* ctx) {
+void parser_clear(struct ParserContext* c) {
 //    free(ctx->sections);
-    line_list_free(ctx->lines);
-    free(ctx->labels);
+    line_list_free(c->lines);
+    free(c->labels);
 }
 
 static struct LineList* get_last_line(struct LineList* lst) {

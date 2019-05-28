@@ -36,20 +36,20 @@ static void test_parser(const char* path) {
     struct LexerState lexer;
     lexer_init(&lexer, source);
 
-    struct Token* tok = lexer_read_token(&lexer);
+    struct Token* tok = lexer_readToken(&lexer);
     while (tok != NULL)
     {
         token_print(tok);
-        tok = lexer_read_token(&lexer);
+        tok = lexer_readToken(&lexer);
 
     }
 
     struct ParserContext parser;
-    context_init(&parser);
+    parser_init(&parser);
 
-    context_read_tokens(&parser, lexer._tokens);
-    context_proc_directives(&parser);
-
-    context_clear(&parser);
+    parser_readTokens(&parser, lexer_getStream(&lexer));
     lexer_clear(&lexer);
+
+    parser_procDirectives(&parser);
+    parser_clear(&parser);
 }

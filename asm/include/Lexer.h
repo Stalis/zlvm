@@ -7,10 +7,18 @@
 
 #include "Token.h"
 
-struct TokenList {
+typedef struct TokenList {
     struct Token* value;
     struct TokenList* next;
-};
+} token_list_t;
+
+typedef struct TokenStream {
+    token_list_t* _first;
+} token_stream_t;
+
+struct Token* tokenStream_read(token_stream_t* stream);
+bool tokenStream_isEof(token_stream_t* stream);
+
 
 struct LexerState {
     char* source;
@@ -22,14 +30,16 @@ struct LexerState {
 
 void lexer_init(struct LexerState*, char* source);
 
-char lexer_peek_char(struct LexerState*);
+char lexer_peekChar(struct LexerState*);
 
-char lexer_next_char(struct LexerState*);
+char lexer_nextChar(struct LexerState*);
 
 char* lexer_ahead(struct LexerState*);
 
-struct Token* lexer_read_token(struct LexerState*);
+struct Token* lexer_readToken(struct LexerState*);
 
 void lexer_clear(struct LexerState* state);
+
+struct TokenStream* lexer_getStream(struct LexerState*);
 
 #endif //ZLVM_C_LEXER_H

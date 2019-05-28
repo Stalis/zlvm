@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_ALU_H
 #define ZLVM_C_ALU_H
 
-#include "../include/Types.h"
+#include "Types.h"
 
 enum Operation {
     OP_NOOP = 0,

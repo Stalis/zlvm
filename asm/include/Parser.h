@@ -34,12 +34,12 @@ struct ParserContext {
     //struct SectionList* sections;
 };
 
-void context_init(struct ParserContext*);
+void parser_init(struct ParserContext*);
 
-void context_read_tokens(struct ParserContext* ctx, struct TokenList* list);
+void parser_readTokens(struct ParserContext* ctx, struct TokenStream* stream);
 
-void context_proc_directives(struct ParserContext* ctx);
+void parser_procDirectives(struct ParserContext* ctx);
 
-void context_clear(struct ParserContext*);
+void parser_clear(struct ParserContext*);
 
 #endif //ZLVM_C_CONTEXT_H

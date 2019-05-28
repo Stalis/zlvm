@@ -14,6 +14,7 @@ set_property(TARGET asmobjlib PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 add_library(zlasm SHARED $<TARGET_OBJECTS:asmobjlib>)
 add_library(zlasm-static STATIC $<TARGET_OBJECTS:asmobjlib>)
+target_link_libraries(zlasm zlasm-static zlvm)
 set_target_properties(zlasm zlasm-static
         PROPERTIES PUBLIC_HEADER "${EXPORT_H}")
 
