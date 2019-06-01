@@ -7,6 +7,12 @@
 
 #include "Parser.h"
 
+struct AssemblerContext {
+    struct LabelTable* labels;
+    const char** globals;
+    const char** externals;
+};
+
 void process_directives(struct ParserContext* ctx);
 
 #endif //ZLVM_C_ASSEMBLER_H

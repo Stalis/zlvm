@@ -117,8 +117,12 @@ static byte* token_get_raw_data(struct Token* t, size_t* __size) {
         case TOK_INT_DEC:
         case TOK_INT_OCT:
         case TOK_INT_BIN:
+        {
+            dword buf = (dword) token_get_int_value(t);
             res = calloc(1, sizeof(dword));
+            memcpy(res, &buf, sizeof(dword));
             *__size = sizeof(dword);
+        }
             break;
         default:
             ZLASM__TOKEN_CRASH("Is not data token", t);

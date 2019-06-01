@@ -107,12 +107,11 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
     for (; i < d->argc; i++)            \
     {                                   \
         size_t size = 0;                \
-        dword data =                    \
-                (dword)token_get_raw_data(d->argv[i], &size);\
-        type val = (type)data;          \
-        if (val != data) {              \
-            ZLASM__TOKEN_CRASH("Invalid value size", d->argv[i]);\
-        }                               \
+        dword* data =                   \
+                (dword*)token_get_raw_data(d->argv[i], &size);\
+        type val = (type)*data;         \
+        if (*data != val)               \
+            {ZLASM__TOKEN_CRASH("Invalid value size", d->argv[i]);}\
         memcpy(ptr, &val, sizeof(type));\
         ptr++;                          \
     }                                   \

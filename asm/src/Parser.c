@@ -5,23 +5,11 @@
 #include <stdlib.h>
 #include "../include/Parser.h"
 
-#define DEFAULT_LABEL_FORMAT "L_%05lu"
-#define DEFAULT_LABEL_FORMAT_SIZE (7)
-
 void parser_init(struct ParserContext* ctx) {
     ctx->lines = malloc(sizeof(struct LineList*));
     line_list_init(ctx->lines);
 
-    ctx->labels = malloc(sizeof(struct LabelList*));
-    ctx->labels->value = malloc(sizeof(struct LabelInfo*));
-    ctx->labels->next = NULL;
-
     ctx->lines_count = 0;
-    /*
-    ctx->sections = malloc(sizeof(struct SectionList*));
-    ctx->sections->value = malloc();
-    ctx->sections->next = NULL;
-    */
 }
 
 static struct TokenStream* parser_getLine(struct TokenStream* stream) {
@@ -186,7 +174,6 @@ __eof:
 void parser_addLine(struct ParserContext* ctx, struct Line* line) {
     const char* label = line->label;
     line_list_add(ctx->lines, line);
-    labelTable_add(ctx->labels, label);
 }
 
 void parser_parse(struct ParserContext* ctx, struct TokenStream* stream) {
@@ -202,7 +189,5 @@ void parser_parse(struct ParserContext* ctx, struct TokenStream* stream) {
 }
 
 void parser_clear(struct ParserContext* c) {
-//    free(ctx->sections);
     line_list_free(c->lines);
-    free(c->labels);
 }
