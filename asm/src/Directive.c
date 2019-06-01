@@ -27,10 +27,16 @@ bool directive_init(struct Directive* d, struct Token* name) {
  * Adds argument token to directive statement
  */
 void directive_add_arg(struct Directive* d, struct Token* arg) {
+    if (d == NULL)
+    {
+        ZLASM__TOKEN_CRASH("Directive is null", arg);
+    }
     assert(d != NULL);
     if (d->argc == 0)
     {
         d->argv = malloc(sizeof(struct Token*));
+        if (!d->argv)
+            ZLASM__CRASH("Allocation error");
     }
     else
     {

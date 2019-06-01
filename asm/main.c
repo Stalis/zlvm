@@ -41,14 +41,23 @@ static void test_parser(const char* path) {
     {
         token_print(tok);
         tok = lexer_readToken(&lexer);
-
     }
+    free(source);
+
+    printf("======================================\n");
 
     struct ParserContext parser;
     parser_init(&parser);
 
     parser_readTokens(&parser, lexer_getStream(&lexer));
     lexer_clear(&lexer);
+
+    struct LineList* ptr = parser.lines;
+    while (NULL != ptr)
+    {
+        line_print(ptr->value);
+        ptr = ptr->next;
+    }
 
     parser_procDirectives(&parser);
     parser_clear(&parser);

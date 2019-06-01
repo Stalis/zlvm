@@ -1,12 +1,12 @@
-.global start
-.global add_until_carry
-.global print_string
-.global print_line
-.global halt
+;.global start
+;.global add_until_carry
+;.global print_string
+;.global print_line
+;.global halt
 
-.extern factorial, 0xFF
+;.extern factorial, 0xFF
 
-.section text
+;.section text
 
 start:
         NOP
@@ -30,17 +30,19 @@ start:
 
 ; doubles $a0 value until carry
 ; @returns $v0 result after carrying
-.proc add_until_carry
+;.proc add_until_carry
+add_until_carry:
         movr    $v0, $a0
 add_until_carry.loop:
         addr    $v0, $a0
         jmp cc  #add_until_carry.loop
         ret
-.endproc
+;.endproc
 
 ; prints null-terminated string with default 0x10 cpu interrupt
 ; @param $a0 address of _first char of string
-.proc print_string
+;.proc print_string
+print_string:
         xorr    $t0, $t0
 
 print_string.loop:
@@ -53,33 +55,35 @@ print_string.loop:
 
 print_string.end:
         ret
-.endproc
+;.endproc
 
 ; prints null-terminated string with print_string and print line break after
 ; @param $a0 address of _first char of string
-.proc print_line
+;.proc print_line
+print_line:
         jmpal   #print_string
         pushr   $a0
         movi    $a0, '\n'
         int     0x10
         popr    $a0
         ret
-.endproc
+;.endproc
 
 ; halts processor
-.proc halt
+;.proc halt
+halt:
         movi    $v0, 0xFF
         int     0x01
         ret
-.endproc
+;.endproc
 
-.section data
+;.section data
 
-    hello:      .asciiz "Hello, World!", '\n'
-    bye:        .ascii  "Bye!", '\n', 0       ; same as `.asciiz "Bye!"`
+;    hello:      .asciiz "Hello, World!", '\n'
+;    bye:        .ascii  "Bye!", '\n', 0       ; same as `.asciiz "Bye!"`
 
-    bytes:      .byte   0, 2, 0xF, 0o77, 0b1111_0101
-    hwords:     .hword  100, 0xFFF, 0b1111_1111_1111_1010
-    words:      .word   10, 0Xf1Abc, 0b11
-    dwords:     .dword  0xfAFFfF_101, 0b111_1_111111_1, 4096
-    buffer:     .space  100
+;    bytes:      .byte   0, 2, 0xF, 0o77, 0b1111_0101
+;    hwords:     .hword  100, 0xFFF, 0b1111_1111_1111_1010
+;    words:      .word   10, 0Xf1Abc, 0b11
+;    dwords:     .dword  0xfAFFfF_101, 0b111_1_111111_1, 4096
+;    buffer:     .space  100

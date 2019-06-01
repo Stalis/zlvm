@@ -9,7 +9,6 @@
 
 struct LabelInfo {
     char* name;
-    size_t name_size;
     size_t address;
 };
 
@@ -18,7 +17,9 @@ struct LabelTable {
     struct LabelTable* next;
 };
 
-void label_table_init(struct LabelTable*);
-void label_table_add(struct LabelTable*);
+void labelTable_init(struct LabelTable*);
+void labelTable_add(struct LabelTable*, const char* name);
+struct LabelInfo* labelInfo_getIfExist(struct LabelTable*, const char* name);
+struct LabelInfo* labelInfo_getOrCreate(struct LabelTable*, const char* name);
 
 #endif //ZLVM_C_LABELTABLE_H

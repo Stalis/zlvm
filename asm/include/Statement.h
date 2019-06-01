@@ -17,4 +17,6 @@ struct Statement {
     struct Token* imm;
 };
 
+void statement_init(struct Statement*);
+
 #endif //ZLVM_C_STATEMENT_H

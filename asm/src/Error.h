@@ -11,11 +11,12 @@
 
 #define ZLASM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 #define ZLASM__TOKEN_CRASH(msg, token) \
-    _token_crash(msg, (token->pos), (token->line), (token->col), __FILE__, __LINE__)
+    _token_crash(msg, (token->pos), (token->line), (token->col), (token->value),__FILE__, __LINE__)
 
-static void _token_crash(const char* msg, size_t pos, size_t line, size_t col, const char* __file, size_t __line) {
-    fprintf(stderr, "Error at %s:%lu\n\t (%4lu:%3lu:%2lu): %s",
-            __file, __line, pos, line, col, msg);
+static void
+_token_crash(const char* msg, size_t pos, size_t line, size_t col, const char* val, const char* __file, size_t __line) {
+    fprintf(stderr, "Error at %s:%lu\n\t (%4lu:%3lu:%2lu): %s (%s)",
+            __file, __line, pos, line, col, msg, val);
     exit(-2);
 }
 

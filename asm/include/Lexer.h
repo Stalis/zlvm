@@ -22,6 +22,7 @@ bool tokenStream_isEof(token_stream_t* stream);
 
 struct LexerState {
     char* source;
+    size_t _len;
     struct TokenList* _tokens;
     size_t pos;
     size_t line;

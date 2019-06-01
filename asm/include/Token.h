@@ -121,7 +121,7 @@ static byte* token_get_raw_data(struct Token* t, size_t* __size) {
             *__size = sizeof(dword);
             break;
         default:
-            ZLASM__CRASH("Is not data token");
+            ZLASM__TOKEN_CRASH("Is not data token", t);
             break;
     }
     return res;

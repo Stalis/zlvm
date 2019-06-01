@@ -26,13 +26,18 @@ static inline bool is_dec_char(char);
 static inline bool is_oct_char(char);
 static inline bool is_bin_char(char);
 
-static void remove_digit_delimiters(char*, size_t);
+static inline void remove_digit_delimiters(char*, size_t);
 
 static void tokenlist_add(struct TokenList*, struct Token*);
 static void tokenlist_free(struct TokenList*);
 
 struct Token* tokenStream_read(token_stream_t* stream) {
+    if (NULL == stream->_first)
+    {
+        return NULL;
+    }
     struct Token* buf = stream->_first->value;
+    stream->_first->value = NULL;
     stream->_first = stream->_first->next;
     return buf;
 }
@@ -46,6 +51,7 @@ void lexer_init(struct LexerState* state, char* source) {
     state->_tokens->value = NULL;
     state->_tokens->next = NULL;
     state->source = source;
+    state->_len = strlen(source);
     state->pos = 0;
     state->line = 1;
     state->col = 1;
@@ -56,6 +62,9 @@ char lexer_peekChar(struct LexerState* s) {
 }
 
 char lexer_nextChar(struct LexerState* s) {
+    if (s->pos >= s->_len)
+        return 0;
+
     char val = s->source[++s->pos];
     if (val == '\n') {
         s->line++;
@@ -291,7 +300,7 @@ static inline bool is_bin_char(char c) {
     return ((c >= '0' && c <= '1') || c == DIGIT_DELIMITER);
 }
 
-static void remove_digit_delimiters(char* string, size_t __size) {
+static inline void remove_digit_delimiters(char* string, size_t __size) {
     char* buf = (char*) calloc(__size, sizeof(char));
     size_t buf_i = 0;
 

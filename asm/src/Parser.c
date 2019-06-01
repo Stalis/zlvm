@@ -27,14 +27,32 @@ void parser_init(struct ParserContext* ctx) {
 }
 
 void parser_readTokens(struct ParserContext* ctx, struct TokenStream* stream) {
-#define THROW_ERROR(err) {\
-    char* msg = strcat(err, cur->value); \
-    ZLASM__TOKEN_CRASH(msg, cur); }
+#define NEWLINE \
+({                                      \
+    if (line->value->type != L_NONE)    \
+    {                                   \
+        if (line->value->label == NULL) \
+        {                               \
+            line->value->label = calloc(DEFAULT_LABEL_FORMAT_SIZE + 1, sizeof(char)); \
+            sprintf(line->value->label, DEFAULT_LABEL_FORMAT, ctx->lines_count);      \
+        }                               \
+        line_list_add(line);            \
+        line = line->next;              \
+        ctx->lines_count++;             \
+    }                                   \
+})
+
+#define NEXT_TOKEN ({                   \
+    if (tokenStream_isEof(stream)) {    \
+        goto __end;                     \
+    }                                   \
+    cur = tokenStream_read(stream);     \
+})
 
     struct Token* cur = tokenStream_read(stream);
     struct LineList* line = get_last_line(ctx->lines);
 
-    while (cur != NULL && cur->value != NULL)
+    while (!tokenStream_isEof(stream))
     {
         switch (cur->type)
         {
@@ -52,77 +70,104 @@ void parser_readTokens(struct ParserContext* ctx, struct TokenStream* stream) {
                         line->value->label = calloc(DEFAULT_LABEL_FORMAT_SIZE + 1, sizeof(char));
                         sprintf(line->value->label, DEFAULT_LABEL_FORMAT, ctx->lines_count);
                     }
-                    line_list_add(line);
-                    line = line->next;
-                    ctx->lines_count++;
                 }
-                break;
-            case TOK_ID:
-                if (line->value->type == L_NONE)
+                else
                 {
-                    line->value->type = L_STMT;
-                    line->value->stmt = calloc(1, sizeof(struct Statement*));
-                    line->value->stmt->opcode = cur;
-                }
-                else if (line->value->type == L_STMT)
-                {
-                    if (line->value->stmt->cond == NULL)
-                    {
-                        line->value->stmt->cond = cur;
-                    }
-                    else THROW_ERROR("Invalid condition using: ");
-                }
-                else if (line->value->type == L_DIR)
-                {
-                    directive_add_arg(line->value->dir, cur);
+                    NEWLINE;
                 }
                 break;
 
-            case TOK_REGISTER:
-                if (line->value->type == L_STMT)
+            case TOK_ID:
+                if (line->value->type == L_NONE)
                 {
-                    if (line->value->stmt->reg1 == NULL)
-                        line->value->stmt->reg1 = cur;
-                    else if (line->value->stmt->reg2 == NULL)
-                        line->value->stmt->reg1 = cur;
-                    else THROW_ERROR("Invalid register using: ");
+                    struct Statement stmt;
+                    statement_init(&stmt);
+                    stmt.opcode = cur;
+                    NEXT_TOKEN;
+                    if (cur->type == TOK_COMMA)
+                        NEXT_TOKEN;
+                    if (cur->type == TOK_ID)
+                    {
+                        stmt.cond = cur;
+                        NEXT_TOKEN;
+                        if (cur->type == TOK_COMMA)
+                            NEXT_TOKEN;
+                    }
+                    if (cur->type == TOK_REGISTER)
+                    {
+                        stmt.reg1 = cur;
+                        NEXT_TOKEN;
+                        if (cur->type == TOK_COMMA)
+                            NEXT_TOKEN;
+                        if (cur->type == TOK_REGISTER)
+                        {
+                            stmt.reg2 = cur;
+                            NEXT_TOKEN;
+                            if (cur->type == TOK_COMMA)
+                                NEXT_TOKEN;
+                        }
+                    }
+                    switch (cur->type)
+                    {
+                        case TOK_STRING_LITERAL:
+                        case TOK_CHAR_LITERAL:
+                        case TOK_INT_HEX:
+                        case TOK_INT_DEC:
+                        case TOK_INT_OCT:
+                        case TOK_INT_BIN:
+                        case TOK_LABEL_USE:
+                            stmt.imm = cur;
+                            NEXT_TOKEN;
+                            break;
+                        default:
+                            break;
+                    }
+                    while (cur->type != TOK_NEWLINE)
+                    {
+                        NEXT_TOKEN;
+                    }
+                    line->value->type = L_STMT;
+                    struct Statement* ptr = malloc(sizeof(struct Statement));
+                    memcpy(ptr, &stmt, sizeof(struct Statement));
+                    line->value->stmt = ptr;
+                    NEWLINE;
                 }
                 break;
 
             case TOK_DIRECTIVE:
                 if (line->value->type == L_NONE)
                 {
+                    struct Directive dir;
+                    directive_init(&dir, cur);
+
+                    NEXT_TOKEN;
+                    while (cur->type != TOK_NEWLINE && cur->type != TOK_COMMENT)
+                    {
+                        directive_add_arg(&dir, cur);
+                        NEXT_TOKEN;
+                        if (cur->type == TOK_COMMA)
+                            NEXT_TOKEN;
+                    }
+
                     line->value->type = L_DIR;
-                    line->value->dir = calloc(1, sizeof(struct Directive*));
-                    directive_init(line->value->dir, cur);
+                    struct Directive* ptr = malloc(sizeof(struct Directive));
+                    memcpy(ptr, &dir, sizeof(struct Directive));
+                    line->value->dir = ptr;
+                    NEWLINE;
                 }
                 break;
-
-            case TOK_COMMA:
-                break;
-
-            case TOK_STRING_LITERAL:
-            case TOK_CHAR_LITERAL:
-            case TOK_INT_HEX:
-            case TOK_INT_DEC:
-            case TOK_INT_OCT:
-            case TOK_INT_BIN:
-            case TOK_LABEL_USE:
-                if (line->value->type == L_STMT)
-                {
-                    if (line->value->stmt->imm == NULL)
-                        line->value->stmt->imm = cur;
-                    else THROW_ERROR("Invalid immediate using: ");
-                }
-                else if (line->value->type == L_DIR)
-                    directive_add_arg(line->value->dir, cur);
-                else THROW_ERROR("Invalid immediate using: ");
+            default:
+                ZLASM__TOKEN_CRASH("Unexpected token", cur);
                 break;
         }
 
-        cur = tokenStream_read(stream);
+        NEXT_TOKEN;
     }
+__end:
     free(stream);
+
+#undef NEXT_TOKEN
+#undef NEWLINE
 }
 
 void parser_procDirectives(struct ParserContext* ctx) {
@@ -136,16 +181,16 @@ void parser_procDirectives(struct ParserContext* ctx) {
     line_list_free(line); \
     line = prev_line;
 
-    while (line->next != NULL)
+    while (line != NULL)
     {
         if (line->value->type == L_DIR)
         {
             if (is_data_directive(line->value->dir->type))
             {
+                struct Directive* dir = line->value->dir;
                 line->value->type = L_RAW;
                 line->value->raw = calloc(1, sizeof(struct RawData));
-                line->value->raw->data = directive_get_raw_data(line->value->dir, &line->value->raw->size);
-                line->value->dir = NULL;
+                line->value->raw->data = directive_get_raw_data(dir, &line->value->raw->size);
                 continue;
             }
             switch (line->value->dir->type)
@@ -171,9 +216,11 @@ void parser_procDirectives(struct ParserContext* ctx) {
                 case DIR_PROC:
                     line->next->value->label = strdup(line->value->dir->argv[0]->value);
                     line->next->value->size = line->value->dir->argv[0]->size;
+                    proc_context = line->value->dir->argv[0]->value;
                     REMOVE_LINE;
                     break;
                 case DIR_ENDPROC:
+                    free(prev_line->value->label);
                     prev_line->value->label = strcat(proc_context, ".end");
                     proc_context = NULL;
                     REMOVE_LINE;

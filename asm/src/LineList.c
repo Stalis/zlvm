@@ -33,11 +33,31 @@ void line_list_free(struct LineList* lst) {
 void line_print(struct Line* l) {
     if (l->type == L_DIR)
     {
+        size_t len = 0;
+        for (size_t i = 0; i < l->dir->argc; i++)
+        {
+            len += l->dir->argv[i]->size;
+            len += 1;
+        }
 
+        printf("%s: .%d", l->label, l->dir->type);
+        for (size_t i = 0; i < l->dir->argc; i++)
+        {
+            printf(" %s", l->dir->argv[i]->value);
+        }
+        printf("\n");
     }
     else if (l->type == L_STMT)
     {
-
+        printf("%s: %s %s ",
+               l->label,
+               l->stmt->opcode->value,
+               NULL == l->stmt->cond ? "un" : l->stmt->cond->value);
+        printf("$%s, $%s, %s\n",
+               NULL == l->stmt->reg1 ? "zero" : l->stmt->reg1->value,
+               NULL == l->stmt->reg2 ? "zero" : l->stmt->reg2->value,
+               NULL == l->stmt->imm ? "NONE" : l->stmt->imm->value
+        );
     }
     else
     {
