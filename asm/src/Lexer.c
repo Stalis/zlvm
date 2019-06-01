@@ -31,6 +31,12 @@ static inline void remove_digit_delimiters(char*, size_t);
 static void tokenlist_add(struct TokenList*, struct Token*);
 static void tokenlist_free(struct TokenList*);
 
+struct TokenStream* tokenStream_new(struct TokenList* l) {
+    struct TokenStream* res = malloc(sizeof(struct TokenStream));
+    res->_first = l;
+    return res;
+}
+
 struct Token* tokenStream_read(token_stream_t* stream) {
     if (NULL == stream->_first)
     {
@@ -44,6 +50,14 @@ struct Token* tokenStream_read(token_stream_t* stream) {
 
 bool tokenStream_isEof(token_stream_t* stream) {
     return NULL == stream->_first || NULL == stream->_first->value;
+}
+
+struct Token* tokenStream_peek(struct TokenStream* stream) {
+    if (NULL == stream->_first)
+    {
+        return NULL;
+    }
+    return stream->_first->value;
 }
 
 void lexer_init(struct LexerState* state, char* source) {
@@ -118,7 +132,7 @@ struct Token* lexer_readToken(struct LexerState* s) {
         case COMMENT_MARK:
             c = lexer_nextChar(s);
             first = s->source + s->pos;
-            while (c != NEWLINE) c = lexer_nextChar(s);
+            while (c != NEWLINE && !is_eof(c)) c = lexer_nextChar(s);
             type = TOK_COMMENT;
             break;
 
@@ -247,12 +261,6 @@ struct Token* lexer_readToken(struct LexerState* s) {
     tokenlist_add(s->_tokens, result);
     return result;
 #undef right
-}
-
-struct TokenStream* lexer_getStream(struct LexerState* s) {
-    struct TokenStream* res = malloc(sizeof(struct TokenStream));
-    res->_first = s->_tokens;
-    return res;
 }
 
 static void tokenlist_add(struct TokenList* list, struct Token* t) {

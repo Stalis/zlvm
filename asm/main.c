@@ -3,6 +3,7 @@
 //
 #include "include/Lexer.h"
 #include "include/Parser.h"
+#include "include/Assembler.h"
 
 const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
 
@@ -49,7 +50,7 @@ static void test_parser(const char* path) {
     struct ParserContext parser;
     parser_init(&parser);
 
-    parser_readTokens(&parser, lexer_getStream(&lexer));
+    parser_parse(&parser, tokenStream_new(lexer._tokens));
     lexer_clear(&lexer);
 
     struct LineList* ptr = parser.lines;
@@ -59,6 +60,16 @@ static void test_parser(const char* path) {
         ptr = ptr->next;
     }
 
-    parser_procDirectives(&parser);
+    printf("======================================\n");
+
+    process_directives(&parser);
+
+    ptr = parser.lines;
+    while (NULL != ptr)
+    {
+        line_print(ptr->value);
+        ptr = ptr->next;
+    }
+
     parser_clear(&parser);
 }

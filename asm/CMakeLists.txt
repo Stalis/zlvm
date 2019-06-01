@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 project(zlasm C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS On)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
 
 set(CMAKE_C_STANDARD 11)

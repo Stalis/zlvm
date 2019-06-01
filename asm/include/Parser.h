@@ -36,9 +36,9 @@ struct ParserContext {
 
 void parser_init(struct ParserContext*);
 
-void parser_readTokens(struct ParserContext* ctx, struct TokenStream* stream);
+void parser_addLine(struct ParserContext*, struct Line*);
 
-void parser_procDirectives(struct ParserContext* ctx);
+void parser_parse(struct ParserContext*, struct TokenStream*);
 
 void parser_clear(struct ParserContext*);
 

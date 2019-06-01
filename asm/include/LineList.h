@@ -35,7 +35,7 @@ struct LineList {
 };
 
 void line_list_init(struct LineList*);
-void line_list_add(struct LineList*);
+void line_list_add(struct LineList* lst, struct Line* line);
 void line_list_free(struct LineList*);
 
 void line_print(struct Line*);

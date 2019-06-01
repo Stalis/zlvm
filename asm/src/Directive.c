@@ -98,6 +98,26 @@ static inline enum DirectiveType get_directive_type(struct Token* t) {
 }
 
 byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
+#define PARSE_DATA_BY(type)             \
+({                                      \
+    *__size = d->argc * sizeof(type);   \
+    res = malloc(*__size);              \
+    ptr = res;                          \
+    size_t i = 0;                       \
+    for (; i < d->argc; i++)            \
+    {                                   \
+        size_t size = 0;                \
+        dword data =                    \
+                (dword)token_get_raw_data(d->argv[i], &size);\
+        type val = (type)data;          \
+        if (val != data) {              \
+            ZLASM__TOKEN_CRASH("Invalid value size", d->argv[i]);\
+        }                               \
+        memcpy(ptr, &val, sizeof(type));\
+        ptr++;                          \
+    }                                   \
+})
+
     assert(is_data_directive(d->type));
     assert(__size != NULL);
     *__size = 0;
@@ -111,7 +131,7 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
         case DIR_ASCIIZ:
             res = malloc(1);
             ptr = res;
-            for (size_t i = 0; i <= d->argc; i++)
+            for (size_t i = 0; i < d->argc; i++)
             {
                 size_t size = 0;
 
@@ -129,54 +149,25 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
             }
             break;
         case DIR_BYTE:
-            res = malloc(d->argc);
-            ptr = res;
-            for (size_t i = 0; i <= d->argc; i++)
-            {
-                size_t size = 0;
-                byte* data = token_get_raw_data(d->argv[i], &size);
-                memcpy(ptr, data, sizeof(byte));
-                ptr++;
-            }
+            PARSE_DATA_BY(byte);
             break;
         case DIR_HWORD:
-            res = malloc(d->argc * sizeof(hword));
-            ptr = res;
-            for (size_t i = 0; i <= d->argc; i++)
-            {
-                size_t size = 0;
-                byte* data = token_get_raw_data(d->argv[i], &size);
-                memcpy(ptr, data, sizeof(hword));
-                ptr++;
-            }
+            PARSE_DATA_BY(hword);
             break;
         case DIR_WORD:
-            res = malloc(d->argc * sizeof(word));
-            ptr = res;
-            for (size_t i = 0; i <= d->argc; i++)
-            {
-                size_t size = 0;
-                byte* data = token_get_raw_data(d->argv[i], &size);
-                memcpy(ptr, data, sizeof(word));
-                ptr++;
-            }
+            PARSE_DATA_BY(word);
             break;
         case DIR_DWORD:
-            res = malloc(d->argc * sizeof(dword));
-            ptr = res;
-            for (size_t i = 0; i <= d->argc; i++)
-            {
-                size_t size = 0;
-                byte* data = token_get_raw_data(d->argv[i], &size);
-                memcpy(ptr, data, sizeof(dword));
-                ptr++;
-            }
+            PARSE_DATA_BY(dword);
+
             break;
         case DIR_SPACE:
+            *__size = token_get_int_value(d->argv[0]);
             res = malloc(token_get_int_value(d->argv[0]));
         default:
             break;
     }
 
     return res;
+#undef PARSE_DATA_BY
 }

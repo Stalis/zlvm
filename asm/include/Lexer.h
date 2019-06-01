@@ -16,7 +16,9 @@ typedef struct TokenStream {
     token_list_t* _first;
 } token_stream_t;
 
+struct TokenStream* tokenStream_new(struct TokenList*);
 struct Token* tokenStream_read(token_stream_t* stream);
+struct Token* tokenStream_peek(struct TokenStream* stream);
 bool tokenStream_isEof(token_stream_t* stream);
 
 
@@ -40,7 +42,5 @@ char* lexer_ahead(struct LexerState*);
 struct Token* lexer_readToken(struct LexerState*);
 
 void lexer_clear(struct LexerState* state);
-
-struct TokenStream* lexer_getStream(struct LexerState*);
 
 #endif //ZLVM_C_LEXER_H
