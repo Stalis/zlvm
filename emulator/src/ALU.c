@@ -1,10 +1,11 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-04-26.
 //
 
 #include "../include/ALU.h"
 
-void alu_compute(struct ALU* alu) {
+void alu_compute(ALU* alu) {
     switch (alu->op_)
     {
         case OP_ID:
@@ -104,7 +105,7 @@ static inline bool isSignedDivOverflow(sword left, sword right, sdword result) {
     return false;
 }
 
-static void alu_setSignedFlags(struct ALU* alu) {
+static void alu_setSignedFlags(ALU* alu) {
     sdword result = (sdword) alu->result_;
     sword left = (sword) alu->left_;
     sword right = (sword) alu->right_;
@@ -154,7 +155,7 @@ static inline bool isUnsignedDivOverflow(word left, word right, dword result) {
     return false;
 }
 
-static void alu_setUnsignedFlags(struct ALU* alu) {
+static void alu_setUnsignedFlags(ALU* alu) {
     word left = alu->left_;
     word right = alu->right_;
     dword result = alu->result_;
@@ -180,7 +181,7 @@ static void alu_setUnsignedFlags(struct ALU* alu) {
     }
 }
 
-void alu_setFlags(struct ALU* alu) {
+void alu_setFlags(ALU* alu) {
     if (alu->result_ == 0)
     {
         alu->flags_.Z = true;
@@ -200,7 +201,7 @@ void alu_setFlags(struct ALU* alu) {
     }
 }
 
-void alu_reset(struct ALU* alu) {
+void alu_reset(ALU* alu) {
     alu->left_ = 0;
     alu->right_ = 0;
     alu->result_ = 0;

@@ -8,39 +8,39 @@
 #include "Token.h"
 
 typedef struct TokenList {
-    struct Token* value;
+    Token* value;
     struct TokenList* next;
-} token_list_t;
+} TokenList;
 
 typedef struct TokenStream {
-    token_list_t* _first;
-} token_stream_t;
+    TokenList* _first;
+} TokenStream;
 
-struct TokenStream* tokenStream_new(struct TokenList*);
-struct Token* tokenStream_read(token_stream_t* stream);
-struct Token* tokenStream_peek(struct TokenStream* stream);
-bool tokenStream_isEof(token_stream_t* stream);
+TokenStream* tokenStream_new(TokenList*);
+Token* tokenStream_read(TokenStream* stream);
+Token* tokenStream_peek(TokenStream* stream);
+bool tokenStream_isEof(TokenStream* stream);
 
 
-struct LexerState {
+typedef struct LexerState {
     char* source;
     size_t _len;
-    struct TokenList* _tokens;
+    TokenList* _tokens;
     size_t pos;
     size_t line;
     size_t col;
-};
+} LexerState;
 
-void lexer_init(struct LexerState*, char* source);
+void lexer_init(LexerState*, char* source);
 
-char lexer_peekChar(struct LexerState*);
+char lexer_peekChar(LexerState*);
 
-char lexer_nextChar(struct LexerState*);
+char lexer_nextChar(LexerState*);
 
-char* lexer_ahead(struct LexerState*);
+char* lexer_ahead(LexerState*);
 
-struct Token* lexer_readToken(struct LexerState*);
+Token* lexer_readToken(LexerState*);
 
-void lexer_clear(struct LexerState* state);
+void lexer_clear(LexerState* state);
 
 #endif //ZLVM_C_LEXER_H

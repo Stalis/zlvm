@@ -1,6 +1,9 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 //
 // Created by Stanislav on 2019-05-27.
 //
+#include <VirtualMachine.h>
 #include "include/Lexer.h"
 #include "include/Parser.h"
 #include "include/Assembler.h"
@@ -37,7 +40,7 @@ static void test_parser(const char* path) {
     struct LexerState lexer;
     lexer_init(&lexer, source);
 
-    struct Token* tok = lexer_readToken(&lexer);
+    Token* tok = lexer_readToken(&lexer);
     while (tok != NULL)
     {
         token_print(tok);
@@ -62,14 +65,26 @@ static void test_parser(const char* path) {
 
     printf("======================================\n");
 
-    process_directives(&parser);
+    struct AssemblerContext asm_;
+    asm_init(&asm_);
+    asm_processDirectives(&asm_, &parser);
+    parser_clear(&parser);
 
-    ptr = parser.lines;
+    ptr = asm_.lines;
     while (NULL != ptr)
     {
         line_print(ptr->value);
         ptr = ptr->next;
     }
 
-    parser_clear(&parser);
+    asm_processLabels(&asm_);
+
+    size_t size = 0;
+    byte* res = asm_translate(&asm_, &size);
+
+    VirtualMachine vm;
+    vm_initialize(&vm, 1024);
+    vm_loadDump(&vm, res, size);
+    State state = vm_run(&vm);
+    exit(state);
 }

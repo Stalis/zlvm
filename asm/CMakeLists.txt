@@ -22,5 +22,10 @@ set_target_properties(zlasm zlasm-static
 add_executable(zlasm-bin main.c)
 target_link_libraries(zlasm-bin zlasm)
 
+target_include_directories(asmobjlib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(zlasm PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(zlasm-static PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(zlasm-bin PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+
 set_target_properties(zlasm-bin zlasm-static
         PROPERTIES OUTPUT_NAME zlasm)

@@ -9,10 +9,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-typedef size_t size_t;
 static const size_t SIZE_T_MAX = SIZE_MAX;
 
-typedef intptr_t intptr_t;
 static const intptr_t INTPTR_T_MAX = INTPTR_MAX;
 static const intptr_t INTPTR_T_MIN = INTPTR_MIN;
 

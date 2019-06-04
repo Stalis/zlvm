@@ -1,9 +1,11 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-14.
 //
 
 #include <stdlib.h>
-#include "../include/Parser.h"
+#include "Parser.h"
+#include "Memory.h"
 
 void parser_init(struct ParserContext* ctx) {
     ctx->lines = malloc(sizeof(struct LineList*));
@@ -171,12 +173,12 @@ __eof:
 #undef NEXT_TOKEN
 }
 
-void parser_addLine(struct ParserContext* ctx, struct Line* line) {
+void parser_addLine(ParserContext* ctx, Line* line) {
     const char* label = line->label;
     line_list_add(ctx->lines, line);
 }
 
-void parser_parse(struct ParserContext* ctx, struct TokenStream* stream) {
+void parser_parse(ParserContext* ctx, TokenStream* stream) {
     struct TokenStream* tok_line = parser_getLine(stream);
     struct Line* line;
 
@@ -188,6 +190,6 @@ void parser_parse(struct ParserContext* ctx, struct TokenStream* stream) {
     }
 }
 
-void parser_clear(struct ParserContext* c) {
+void parser_clear(ParserContext* c) {
     line_list_free(c->lines);
 }

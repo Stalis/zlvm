@@ -5,13 +5,15 @@
 #ifndef ZLVM_C_VIRTUALMACHINE_INTERNAL_H
 #define ZLVM_C_VIRTUALMACHINE_INTERNAL_H
 
-byte fetchByte(struct VirtualMachine*);
-struct Instruction fetchInstruction(struct VirtualMachine*);
-void runInstruction(struct VirtualMachine*, struct Instruction);
-bool checkCondition(struct VirtualMachine*, enum Condition);
+#include "VirtualMachine.h"
 
-byte readByte(struct VirtualMachine* this, size_t address);
-void writeByte(struct VirtualMachine* this, size_t address, byte value);
+byte fetchByte(VirtualMachine*);
+Instruction fetchInstruction(VirtualMachine*);
+void runInstruction(VirtualMachine*, Instruction);
+bool checkCondition(VirtualMachine*, Condition);
+
+byte readByte(VirtualMachine* this, size_t address);
+void writeByte(VirtualMachine* this, size_t address, byte value);
 
 hword readHword(struct VirtualMachine* this, size_t address);
 void writeHword(struct VirtualMachine* this, size_t address, hword value);

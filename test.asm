@@ -24,7 +24,7 @@ start:
         movi    $a0, #bye
         jmpal   #print_line
 
-        int     0XFF
+        jmp     #halt
 
 ;------- Functions --------;
 
@@ -70,7 +70,6 @@ end:
 .proc halt
         movi    $v0, 0xFF
         int     0x01
-        ret
 .endproc
 
 .section data

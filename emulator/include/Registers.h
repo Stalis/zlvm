@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_REGISTERS_H
 #define ZLVM_C_REGISTERS_H
 
-enum Registers {
+typedef enum Registers {
     /** Read-only zero register */
             R_ZERO,
     /** Assembler temporary */
@@ -33,6 +33,6 @@ enum Registers {
             R_PC,
 
     R_TOTAL // total registers
-};
+} Register;
 
 #endif //ZLVM_C_REGISTERS_H

@@ -9,14 +9,14 @@
 #include "../../emulator/include/Condition.h"
 #include "Token.h"
 
-struct Statement {
-    struct Token* opcode;
-    struct Token* cond;
-    struct Token* reg1;
-    struct Token* reg2;
-    struct Token* imm;
-};
+typedef struct Statement {
+    Token* opcode;
+    Token* cond;
+    Token* reg1;
+    Token* reg2;
+    Token* imm;
+} Statement;
 
-void statement_init(struct Statement*);
+void statement_init(Statement*);
 
 #endif //ZLVM_C_STATEMENT_H

@@ -1,8 +1,10 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-07.
 //
 
-#include "../include/Token.h"
+#include "Token.h"
+#include "Memory.h"
 
 static inline const char* get_token_type_name(enum TokenType);
 
@@ -55,6 +57,7 @@ static inline const char* get_token_type_name(enum TokenType t) {
             return "INT_BIN";
         case TOK_COMMA:
             return "COMMA";
+        default:
+            return "UNKNOWN";
     }
-    return "UNKNOWN_TOKEN";
 }

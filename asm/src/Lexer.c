@@ -1,11 +1,13 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-07.
 //
 
 #include <memory.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "../include/Lexer.h"
+#include "Lexer.h"
+#include "Memory.h"
 
 static const char NEWLINE = '\n';
 static const char COMMA = ',';
@@ -37,7 +39,7 @@ struct TokenStream* tokenStream_new(struct TokenList* l) {
     return res;
 }
 
-struct Token* tokenStream_read(token_stream_t* stream) {
+struct Token* tokenStream_read(TokenStream* stream) {
     if (NULL == stream->_first)
     {
         return NULL;
@@ -48,7 +50,7 @@ struct Token* tokenStream_read(token_stream_t* stream) {
     return buf;
 }
 
-bool tokenStream_isEof(token_stream_t* stream) {
+bool tokenStream_isEof(TokenStream* stream) {
     return NULL == stream->_first || NULL == stream->_first->value;
 }
 
@@ -281,11 +283,11 @@ static void tokenlist_add(struct TokenList* list, struct Token* t) {
 }
 
 static inline bool is_eof(char c) {
-    return (c == EOF) || (c == '\0');
+    return (c == (char) EOF) || (c == '\0');
 }
 
 static inline bool is_ignored_char(char c) {
-    return ((isspace(c) != 0) && (c != NEWLINE)) || (c == EOF) || (c == '\0');
+    return ((isspace(c) != 0) && (c != NEWLINE)) || is_eof(c);
 }
 
 static inline bool is_id_char(char c) {
@@ -320,6 +322,7 @@ static inline void remove_digit_delimiters(char* string, size_t __size) {
         }
     }
     strncpy(string, buf, __size);
+    free(buf);
 }
 
 static void tokenlist_free(struct TokenList* list) {

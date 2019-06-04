@@ -9,8 +9,9 @@
 #include <memory.h>
 #include "../../emulator/include/Types.h"
 #include "../src/Error.h"
+#include "../src/Memory.h"
 
-enum TokenType {
+typedef enum TokenType {
     TOK_COMMENT,
     TOK_NEWLINE,
 
@@ -29,29 +30,29 @@ enum TokenType {
     TOK_INT_DEC,
     TOK_INT_OCT,
     TOK_INT_BIN,
-};
+} TokenType;
 
-struct Token {
-    enum TokenType type;
+typedef struct Token {
+    TokenType type;
     size_t size;
     char* value;
 
     size_t pos;
     size_t line;
     size_t col;
-};
+} Token;
 
 /**
  * Prints token representation to STDOUT
  */
-void token_print(struct Token*);
+void token_print(Token*);
 
 /**
  * Free memory, used by token
  */
-void token_free(struct Token*);
+void token_free(Token*);
 
-static inline dword token_get_int_value(struct Token* t) {
+static inline dword token_get_int_value(Token* t) {
     switch (t->type) {
         case TOK_INT_HEX:
             return strtoull(t->value, NULL, 16);
@@ -102,7 +103,7 @@ static byte* token_get_string_value(char* val, size_t* __size) {
     return res;
 }
 
-static byte* token_get_raw_data(struct Token* t, size_t* __size) {
+static byte* token_get_raw_data(Token* t, size_t* __size) {
     byte* res = NULL;
     switch (t->type) {
         case TOK_STRING_LITERAL:

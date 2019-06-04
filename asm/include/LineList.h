@@ -9,35 +9,41 @@
 #include "Directive.h"
 #include "Statement.h"
 
-enum LineType {
+typedef enum LineType {
     L_NONE, L_DIR, L_STMT, L_RAW
-};
+} LineType;
 
-struct RawData {
+typedef struct RawData {
     size_t size;
     byte* data;
-};
+} RawData;
 
-struct Line {
-    enum LineType type;
+typedef struct Line {
+    LineType type;
     char* label;
     size_t size;
     union {
-        struct Directive* dir;
-        struct Statement* stmt;
-        struct RawData* raw;
+        Directive* dir;
+        Statement* stmt;
+        RawData* raw;
     };
-};
+} Line;
 
-struct LineList {
+typedef struct LineList {
     struct Line* value;
     struct LineList* next;
-};
+} LineList;
 
-void line_list_init(struct LineList*);
-void line_list_add(struct LineList* lst, struct Line* line);
-void line_list_free(struct LineList*);
+typedef struct LineStream {
+    LineList* first;
+} LineStream;
 
-void line_print(struct Line*);
+void line_list_init(LineList*);
+void line_list_add(LineList* lst, Line* line);
+void line_list_free(LineList*);
 
+void line_print(Line*);
+
+LineStream* lineStream_new(LineList*);
+Line* lineStream_read(LineStream*);
 #endif //ZLVM_C_LINELIST_H

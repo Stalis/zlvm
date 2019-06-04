@@ -1,9 +1,11 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-13.
 //
 
 #include <memory.h>
-#include "../include/Directive.h"
+#include "Directive.h"
+#include "Memory.h"
 
 static inline enum DirectiveType get_directive_type(struct Token*);
 
@@ -12,7 +14,7 @@ static inline enum DirectiveType get_directive_type(struct Token*);
  * If name token is valid, sets directive.type
  * @return `true` if directive name is valid, else returns `false`
  */
-bool directive_init(struct Directive* d, struct Token* name) {
+bool directive_init(struct Directive* d, Token* name) {
     assert(d != NULL);
     d->type = get_directive_type(name);
     if (d->type == DIR_TOTAL)
@@ -26,7 +28,7 @@ bool directive_init(struct Directive* d, struct Token* name) {
 /*
  * Adds argument token to directive statement
  */
-void directive_add_arg(struct Directive* d, struct Token* arg) {
+void directive_add_arg(struct Directive* d, Token* arg) {
     if (d == NULL)
     {
         ZLASM__TOKEN_CRASH("Directive is null", arg);
@@ -34,13 +36,11 @@ void directive_add_arg(struct Directive* d, struct Token* arg) {
     assert(d != NULL);
     if (d->argc == 0)
     {
-        d->argv = malloc(sizeof(struct Token*));
-        if (!d->argv)
-            ZLASM__CRASH("Allocation error");
+        d->argv = malloc(sizeof(Token*));
     }
     else
     {
-        d->argv = realloc(d->argv, sizeof(struct Token*) * (d->argc + 1));
+        d->argv = realloc(d->argv, sizeof(Token*) * (d->argc + 1));
     }
     d->argv[d->argc++] = arg;
 }
@@ -67,7 +67,7 @@ void directive_print(struct Directive* d) {
     assert(d != NULL);
 }
 
-static inline enum DirectiveType get_directive_type(struct Token* t) {
+static inline enum DirectiveType get_directive_type(Token* t) {
 #define CHECK(str, res) \
     if (strcmp(t->value, str) == 0) \
         return res
@@ -135,6 +135,8 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
                 size_t size = 0;
 
                 byte* data = token_get_raw_data(d->argv[i], &size);
+                if (d->argv[i]->type != TOK_STRING_LITERAL)
+                    size = 1;
                 *__size += size;
                 res = realloc(res, *__size);
                 memcpy(ptr, data, size);
@@ -147,6 +149,7 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
                 res[*__size - 1] = '\0';
             }
             break;
+
         case DIR_BYTE:
             PARSE_DATA_BY(byte);
             break;
@@ -158,8 +161,8 @@ byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
             break;
         case DIR_DWORD:
             PARSE_DATA_BY(dword);
-
             break;
+
         case DIR_SPACE:
             *__size = token_get_int_value(d->argv[0]);
             res = malloc(token_get_int_value(d->argv[0]));

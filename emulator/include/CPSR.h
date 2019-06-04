@@ -9,8 +9,8 @@
 #include "State.h"
 #include "Value.h"
 
-union CPSR {
-    union Value value_;
+typedef union CPSR {
+    Value value_;
     struct {
         bool N : 1; // negative
         bool Z : 1; // zero
@@ -18,9 +18,9 @@ union CPSR {
         bool V : 1; // overflow
         bool S : 1; // last operation is signed
         byte _reserved : 3;
-        enum State ST : 8;
+        State ST : 8;
         dword _reserverd1 : 48;
     };
-};
+} CPSR;
 
 #endif //ZLVM_C_CPSR_H

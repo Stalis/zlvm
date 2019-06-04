@@ -1,4 +1,5 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-27.
 //
 
@@ -9,7 +10,7 @@
  * @param op opcode
  * @return mnemonic's null-terminated string
  */
-const char* opcode_to_string(enum Opcode op) {
+const char* opcode_to_string(Opcode op) {
     if (op >= OPCODE_TOTAL)
     {
         return NULL;
@@ -25,7 +26,7 @@ const char* opcode_to_string(enum Opcode op) {
  * @param string mnemonic null-terminated string
  * @return opcode
  */
-enum Opcode string_to_opcode(const char* string) {
+Opcode string_to_opcode(const char* string) {
     for (size_t i = 0; i < OPCODE_TOTAL; i++)
     {
         if (strcmp(string, opcode_strings[i]) == 0)

@@ -1,9 +1,11 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-14.
 //
 
 #include <printf.h>
-#include "../include/LineList.h"
+#include "LineList.h"
+#include "Memory.h"
 
 static struct LineList* lineList_getLast(struct LineList* l) {
     assert(l != NULL);
@@ -64,6 +66,7 @@ void line_print(struct Line* l) {
         printf(".%d", l->dir->type);
         for (size_t i = 0; i < l->dir->argc; i++)
         {
+            if (i != 0) printf(",");
             printf(" %s", l->dir->argv[i]->value);
         }
     }
@@ -88,4 +91,22 @@ void line_print(struct Line* l) {
         printf("]");
     }
     printf("\n");
+}
+
+LineStream* lineStream_new(LineList* lst) {
+    LineStream* stream = malloc(sizeof(LineStream));
+    stream->first = lst;
+    return stream;
+}
+
+Line* lineStream_read(LineStream* stream) {
+    if (stream->first == NULL)
+        return NULL;
+
+    LineList* buf = stream->first;
+    stream->first = buf->next;
+    Line* val = buf->value;
+    buf->value = NULL;
+    buf->next = NULL;
+    return val;
 }

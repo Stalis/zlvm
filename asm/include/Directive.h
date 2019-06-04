@@ -8,7 +8,7 @@
 #include "../../emulator/include/Types.h"
 #include "Token.h"
 
-enum DirectiveType {
+typedef enum DirectiveType {
     DIR_SECTION,
     DIR_GLOBAL,
     DIR_EXTERN,
@@ -29,47 +29,47 @@ enum DirectiveType {
     DIR_PROC,
     DIR_ENDPROC,
     DIR_TOTAL,
-};
+} DirectiveType;
 
-struct Directive {
-    enum DirectiveType type;
+typedef struct Directive {
+    DirectiveType type;
     size_t argc;
-    struct Token** argv;
-};
+    Token** argv;
+} Directive;
 
 /**
  * @brief   Initialize directive with name as token
  *          If name token is valid, sets directive.type
  * @return  `true` if directive name is valid, else returns `false`
  */
-bool directive_init(struct Directive*, struct Token* name);
+bool directive_init(Directive*, Token* name);
 
 /**
  * @brief Free memory, allocated for directive
  */
-void directive_free(struct Directive*);
+void directive_free(Directive*);
 
 /**
  * @brief Adds argument token to directive statement
  */
-void directive_add_arg(struct Directive*, struct Token*);
+void directive_add_arg(Directive*, Token*);
 
 /**
  * @brief Prints directive representation to stdout
  */
-void directive_print(struct Directive*);
+void directive_print(Directive*);
 
 /**
  * @brief Returns pointer to data directive raw data
  * @param __size pointer to write data size value
  */
-byte* directive_get_raw_data(struct Directive*, size_t* __size);
+byte* directive_get_raw_data(Directive*, size_t* __size);
 
 /**
  * @param t type of directive
  * @return `true` if t is data directive type, else `false`
  */
-static inline bool is_data_directive(enum DirectiveType t) {
+static inline bool is_data_directive(DirectiveType t) {
     switch (t)
     {
         case DIR_ASCII:

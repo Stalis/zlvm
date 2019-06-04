@@ -7,19 +7,20 @@
 
 #include "../../emulator/include/Types.h"
 
-struct LabelInfo {
-    char* name;
+typedef struct LabelInfo {
+    const char* name;
     size_t address;
-};
+} LabelInfo;
 
-struct LabelTable {
+typedef struct LabelTable {
     struct LabelInfo* value;
     struct LabelTable* next;
-};
+} LabelTable;
 
-void labelTable_init(struct LabelTable*);
-void labelTable_add(struct LabelTable*, const char* name);
-struct LabelInfo* labelInfo_getIfExist(struct LabelTable*, const char* name);
-struct LabelInfo* labelInfo_getOrCreate(struct LabelTable*, const char* name);
+void labelTable_init(LabelTable*);
+struct LabelInfo* labelTable_add(LabelTable*, const char* name);
+struct LabelInfo* labelTable_setOrCreate(LabelTable*, const char* name, size_t addr);
+struct LabelInfo* labelInfo_getIfExist(LabelTable*, const char* name);
+struct LabelInfo* labelInfo_getOrCreate(LabelTable*, const char* name);
 
 #endif //ZLVM_C_LABELTABLE_H

@@ -13,34 +13,36 @@
 #include "Condition.h"
 #include "Instruction.h"
 
-static const size_t __ZLVM_MEMORY_SIZE = 1024;
+static const size_t __ZLVM_ROM_SIZE = 1024;
 static const size_t __ZLVM_STACK_SIZE = 256;
 static const size_t __ZLVM_REGISTER_COUNT = R_TOTAL;
 static const size_t __ZLVM_WORD_SIZE = sizeof(word);
 
-struct VirtualMachine {
-    union CPSR _cpsr;
-    struct ALU _alu;
-    union Value _registers[__ZLVM_REGISTER_COUNT];
-    byte _memory[__ZLVM_MEMORY_SIZE + __ZLVM_STACK_SIZE];
-};
+typedef struct VirtualMachine {
+    CPSR _cpsr;
+    ALU _alu;
+    Value _registers[__ZLVM_REGISTER_COUNT];
+    byte _rom[__ZLVM_ROM_SIZE];
+    byte* _memory;
+    size_t _memorySize;
+} VirtualMachine;
 
 /**
  * @brief Initialize virtual machine instance
  */
-void initialize(struct VirtualMachine*);
+void vm_initialize(VirtualMachine* vm, size_t ram_size);
 
 /**
  * @brief Load dump to vm's memory
  * @param program pointer to byte array of dump
  * @param size size of dump
  */
-void loadDump(struct VirtualMachine*, byte* program, size_t size);
+void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size);
 
 /**
  * @brief Start vm
  * @return exit state of vm
  */
-enum State run(struct VirtualMachine*);
+State vm_run(VirtualMachine* vm);
 
 #endif //ZLVM_C_VIRTUALMACHINE_H

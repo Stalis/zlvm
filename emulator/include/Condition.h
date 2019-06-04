@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_CONDITION_H
 #define ZLVM_C_CONDITION_H
 
-enum Condition {
+typedef enum Condition {
     C_UNCONDITIONAL = 0,
     C_ZERO_SET,
     C_ZERO_CLEAR,
@@ -24,6 +24,6 @@ enum Condition {
     C_GREATER,
     C_GREATER_OR_EQUALS,
     C_TOTAL,
-};
+} Condition;
 
 #endif //ZLVM_C_CONDITION_H

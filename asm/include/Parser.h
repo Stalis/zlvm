@@ -12,17 +12,17 @@
 #include "Lexer.h"
 #include "Token.h"
 
-struct ParserContext {
+typedef struct ParserContext {
     struct LineList* lines;
     size_t lines_count;
-};
+} ParserContext;
 
-void parser_init(struct ParserContext*);
+void parser_init(ParserContext*);
 
-void parser_addLine(struct ParserContext*, struct Line*);
+void parser_addLine(ParserContext*, Line*);
 
-void parser_parse(struct ParserContext*, struct TokenStream*);
+void parser_parse(ParserContext*, TokenStream*);
 
-void parser_clear(struct ParserContext*);
+void parser_clear(ParserContext*);
 
 #endif //ZLVM_C_CONTEXT_H

@@ -1,8 +1,9 @@
-//
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-07.
 //
 
-#include "../include/Statement.h"
+#include "Statement.h"
 
 void statement_init(struct Statement* s) {
     s->opcode = NULL;
