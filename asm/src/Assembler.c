@@ -133,31 +133,6 @@ void asm_processDirectives(AssemblerContext* ctx, ParserContext* parser) {
 #undef REMOVE_LINE
 }
 
-void asm_addLabel(AssemblerContext* ctx, const char* sym) {
-    LabelInfo* l = calloc(1, sizeof(LabelInfo));
-    l->name = sym;
-
-    if (ctx->labels == NULL)
-    {
-        ctx->labels = calloc(1, sizeof(LabelTable));
-    }
-
-    LabelTable* last = ctx->labels;
-
-    while (last->next != NULL)
-    {
-        last = last->next;
-    }
-
-    if (last->value != NULL)
-    {
-        last->next = calloc(1, sizeof(LabelTable));
-        last = last->next;
-    }
-
-    last->value = l;
-}
-
 void asm_addGlobal(AssemblerContext* ctx, const char* sym) {
     if (ctx->globals == NULL)
     {

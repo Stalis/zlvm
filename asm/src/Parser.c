@@ -174,7 +174,6 @@ __eof:
 }
 
 void parser_addLine(ParserContext* ctx, Line* line) {
-    const char* label = line->label;
     line_list_add(ctx->lines, line);
 }
 
