@@ -9,6 +9,7 @@
 
 typedef struct LabelInfo {
     const char* name;
+    size_t labelLength;
     size_t address;
 } LabelInfo;
 

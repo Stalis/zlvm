@@ -56,7 +56,8 @@ void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
 }
 
 State vm_run(VirtualMachine* vm) {
-    vm->_registers[R_PC].word_ = 0; // set to end of stack
+    vm->_registers[R_PC].word_ = 0; // set to start of rom
+    vm->_registers[R_SP].word_ = 0; // set to start of memory
     while (notError(vm) && !checkState(vm, S_HALTED))
     {
         runInstruction(vm, fetchInstruction(vm));
@@ -87,6 +88,12 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
     Value* reg1 = &vm->_registers[instruction.register1];
     Value* reg2 = &vm->_registers[instruction.register2];
     word imm = instruction.immediate;
+#ifdef DEBUG
+    printf("[S: 0x%X LP: 0x%X]: ", readWord(vm, vm->_registers[R_SP].word_ + __ZLVM_ROM_SIZE),
+           vm->_registers[R_LP].word_);
+    printf("0x%X: ", vm->_registers[R_PC].word_);
+    instruction_print(&instruction);
+#endif
 
     switch (instruction.opcode_)
     {
@@ -431,7 +438,7 @@ word popWord(VirtualMachine* this) {
         setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
-    word res = readWord(this, this->_registers[R_SP].word_);
+    word res = readWord(this, this->_registers[R_SP].word_ + __ZLVM_ROM_SIZE);
     this->_registers[R_SP].word_ -= __ZLVM_WORD_SIZE;
     return res;
 }
@@ -443,7 +450,7 @@ void pushWord(VirtualMachine* this, word value) {
         return;
     }
     this->_registers[R_SP].word_ += __ZLVM_WORD_SIZE;
-    writeWord(this, this->_registers[R_SP].word_, value);
+    writeWord(this, this->_registers[R_SP].word_ + __ZLVM_ROM_SIZE, value);
 }
 
 bool notError(VirtualMachine* vm) {
@@ -481,24 +488,29 @@ void doOperation(VirtualMachine* vm, Operation op, word left, word right) {
 
 void interrupt(VirtualMachine* vm, word code) {
     // TODO: прерывания :)))
+    switch (code)
+    {
+        case 0x01:
+            __sputc(vm->_registers[R_A0].byte_ + 0x60, stdout);
+            break;
+        case 0x02:
+            __sputc(vm->_registers[R_A0].byte_, stdout);
+            break;
+        case 0x10:
+            vm->_registers[R_V0].word_ = (word) __sgetc(stdin);
+            break;
+        case 0xFF:
+            setState(vm, S_HALTED);
+            break;
+        default:
+            break;
+    }
 }
 
 void syscall(VirtualMachine* vm) {
     // TODO: софтовые прерывания :)))
     switch (vm->_registers[R_SC].word_)
     {
-        case 0x01:
-            fputc(vm->_registers[R_A0].word_ + 0x60, stdout);
-            break;
-        case 0x02:
-            fputc(vm->_memory[vm->_registers[R_A0].word_], stdout);
-            break;
-        case 0x10:
-            vm->_registers[R_V0].word_ = (word) getc(stdin);
-            break;
-        case 0xFF:
-            setState(vm, S_HALTED);
-            break;
         default:
             break;
     }

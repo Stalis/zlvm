@@ -16,4 +16,6 @@ typedef struct Instruction {
     word immediate : 32;
 } Instruction;
 
+void instruction_print(Instruction*);
+
 #endif //ZLVM_C_INSTRUCTION_H

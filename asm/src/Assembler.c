@@ -56,7 +56,8 @@ void asm_processDirectives(AssemblerContext* ctx, ParserContext* parser) {
     {
         if (proc_context != NULL && line->label != NULL)
         {
-            line->label = (char*) set_label_context(proc_context, line->label);
+            const char* buf = line->label;
+            line->label = (char*) set_label_context(proc_context, buf);
         }
         if (line->type == L_DIR)
         {
@@ -167,6 +168,9 @@ void asm_processLabels(AssemblerContext* ctx) {
         if (last->value->label != NULL)
         {
             labelTable_setOrCreate(ctx->labels, strdup(last->value->label), addr);
+#ifdef DEBUG
+            printf("%s: 0x%lX\n", last->value->label, addr);
+#endif
         }
         if (last->value->type == L_STMT)
         {
@@ -221,7 +225,7 @@ byte* asm_translate(AssemblerContext* ctx, size_t* __size) {
                     LabelInfo* l = labelInfo_getIfExist(ctx->labels, stmt->imm->value);
                     if (l != NULL)
                     {
-                        instr.immediate = l->address + __ZLVM_STACK_SIZE;
+                        instr.immediate = l->address;
                     }
                     else
                     {
@@ -251,6 +255,7 @@ byte* asm_translate(AssemblerContext* ctx, size_t* __size) {
 
             length = sizeof(Instruction);
             buf = (byte*) &instr;
+            instruction_print(&instr);
         }
         else if (cur->value->type == L_RAW)
         {
@@ -283,10 +288,10 @@ static const char* set_label_context(const char* ctx, const char* label) {
     {
         return strdup(ctx);
     }
-    char* buf = strdup(ctx);
+    char* buf = calloc(256, sizeof(char));
+    sprintf(buf, "%s%s%s", ctx, CONTEXT_DELIMITER, label);
+    buf = realloc(buf, strlen(buf));
 
-    strcat(buf, CONTEXT_DELIMITER);
-    strcat(buf, label);
     return buf;
 }
 

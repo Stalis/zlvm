@@ -21,12 +21,19 @@ struct LabelInfo* labelTable_setOrCreate(struct LabelTable* t, const char* name,
     assert(t != NULL);
     struct LabelInfo* l = calloc(1, sizeof(struct LabelInfo));
     l->name = name;
+    l->labelLength = strlen(name);
     l->address = addr;
 
     struct LabelTable* last = t;
 
     while (last->next != NULL)
     {
+        if (strncmp(last->value->name, l->name, l->labelLength) == 0)
+        {
+            last->value->address = addr;
+            free(l);
+            return last->value;
+        }
         last = last->next;
     }
 
@@ -45,9 +52,10 @@ struct LabelInfo* labelInfo_getIfExist(struct LabelTable* t, const char* name) {
     assert(t != NULL);
     if (t->value == NULL) return NULL;
 
+    size_t len = strlen(name);
     while (1)
     {
-        if (0 == strcmp(t->value->name, name))
+        if (0 == strncmp(t->value->name, name, len))
         {
             return t->value;
         }
