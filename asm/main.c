@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     char* file = argv[1];
 
 #ifdef DEBUG
-    test_parser(test_source);
+    test_parser(file);
 #endif
 
     size_t size = 0;
