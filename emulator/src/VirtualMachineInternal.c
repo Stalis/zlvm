@@ -57,7 +57,8 @@ void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
 
 State vm_run(VirtualMachine* vm) {
     vm->_registers[R_PC].word_ = 0; // set to start of rom
-    vm->_registers[R_SP].word_ = 0; // set to start of memory
+    vm->_registers[R_BP].word_ = __ZLVM_ROM_SIZE;
+    vm->_registers[R_SP].word_ = vm->_registers[R_BP].word_; // set to start of memory
     while (notError(vm) && !checkState(vm, S_HALTED))
     {
         runInstruction(vm, fetchInstruction(vm));
@@ -88,8 +89,9 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
     Value* reg1 = &vm->_registers[instruction.register1];
     Value* reg2 = &vm->_registers[instruction.register2];
     word imm = instruction.immediate;
+
 #ifdef DEBUG
-    printf("[S: 0x%X LP: 0x%X]: ", readWord(vm, vm->_registers[R_SP].word_ + __ZLVM_ROM_SIZE),
+    printf("[S: 0x%X LP: 0x%X]: ", readWord(vm, vm->_registers[R_SP].word_),
            vm->_registers[R_LP].word_);
     printf("0x%X: ", vm->_registers[R_PC].word_);
     instruction_print(&instruction);
@@ -433,24 +435,24 @@ void writeDword(VirtualMachine* this, size_t address, dword value) {
 }
 
 word popWord(VirtualMachine* this) {
-    if ((sword) (this->_registers[R_SP].word_ - __ZLVM_WORD_SIZE) < 0)
+    if ((this->_registers[R_SP].word_ - __ZLVM_WORD_SIZE) < this->_registers[R_BP].word_)
     {
         setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
-    word res = readWord(this, this->_registers[R_SP].word_ + __ZLVM_ROM_SIZE);
+    word res = readWord(this, this->_registers[R_SP].word_);
     this->_registers[R_SP].word_ -= __ZLVM_WORD_SIZE;
     return res;
 }
 
 void pushWord(VirtualMachine* this, word value) {
-    if (this->_registers[R_SP].word_ + __ZLVM_WORD_SIZE >= __ZLVM_STACK_SIZE)
+    if (this->_registers[R_SP].word_ + __ZLVM_WORD_SIZE - this->_registers[R_BP].word_ >= __ZLVM_STACK_SIZE)
     {
         setState(this, S_ERR_STACK_OVERFLOW);
         return;
     }
     this->_registers[R_SP].word_ += __ZLVM_WORD_SIZE;
-    writeWord(this, this->_registers[R_SP].word_ + __ZLVM_ROM_SIZE, value);
+    writeWord(this, this->_registers[R_SP].word_, value);
 }
 
 bool notError(VirtualMachine* vm) {
