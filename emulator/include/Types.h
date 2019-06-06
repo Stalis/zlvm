@@ -9,6 +9,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+static const size_t SIZE_T_MAX = SIZE_MAX;
+
+static const intptr_t INTPTR_T_MAX = INTPTR_MAX;
+static const intptr_t INTPTR_T_MIN = INTPTR_MIN;
+
 typedef uint8_t byte;
 typedef uint16_t hword;
 typedef uint32_t word;
@@ -33,9 +38,5 @@ static const sbyte SBYTE_MAX = INT8_MAX;
 static const shword SHWORD_MAX = INT16_MAX;
 static const sword SWORD_MAX = INT32_MAX;
 static const sdword SDWORD_MAX = INT64_MAX;
-
-typedef size_t size_t;
-
-static const size_t SIZE_T_MAX = SIZE_MAX;
 
 #endif //ZLVM_C_COMMON_H

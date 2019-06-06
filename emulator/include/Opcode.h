@@ -69,10 +69,10 @@
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
 
-enum Opcode {
+typedef enum Opcode {
     FOREACH_OPCODE(GENERATE_ENUM)
     OPCODE_TOTAL,
-};
+} Opcode;
 
 static const char* opcode_strings[] = {
         FOREACH_OPCODE(GENERATE_STRING)
@@ -82,22 +82,18 @@ static const char* opcode_strings[] = {
 #undef GENERATE_ENUM
 #undef GENERATE_STRING
 
-static const char* opcode_to_string(enum Opcode op) {
-    if (op >= OPCODE_TOTAL) {
-        return NULL;
-    } else {
-        return opcode_strings[op];
-    }
-}
+/**
+ * Returns opcode mnemonic
+ * @param op opcode
+ * @return mnemonic's null-terminated string
+ */
+const char* opcode_to_string(Opcode op);
 
-static enum Opcode string_to_opcode(const char* string) {
-    for (size_t i = 0; i < OPCODE_TOTAL; i++) {
-        if (strcmp(string, opcode_strings[i]) == 0) {
-            return (enum Opcode) i;
-        }
-    }
-
-    return OPCODE_TOTAL;
-}
+/**
+ * Parse opcode mnemonic
+ * @param string mnemonic null-terminated string
+ * @return opcode
+ */
+Opcode string_to_opcode(const char* string);
 
 #endif //ZLVM_C_OPCODE_H

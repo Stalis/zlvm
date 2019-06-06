@@ -1,18 +1,26 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 #include <stdio.h>
-#include "emulator/VirtualMachine.h"
-#include "asm/asm.h"
+#include "VirtualMachine.h"
+#include "../asm/include/zlasm.h"
+#include "src/Error.h"
+#include "src/Memory.h"
 
-const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
-const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.s";
+static const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
+static const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
 
-byte* readFile(const char* path, size_t* size);
-byte* readSource(const char* path, size_t* size);
-void printState(enum State state);
+static byte* readFile(const char* path, size_t* size);
+static byte* readSource(const char* path, size_t* size);
+static void printState(enum State state);
 
 int main() {
+    const size_t memorySize = 4096;
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
-    printf("Size of machine hword: %lu bytes\n", __ZLVM_WORD_SIZE);
-    printf("Operations count: %d\n", NOP); //OPCODE_TOTAL);
+    printf("Operations count: %d\n", OPCODE_TOTAL);
+    printf("Size of machine word: %lu bytes\n", __ZLVM_WORD_SIZE);
+    printf("ROM size: %lu bytes\n", __ZLVM_ROM_SIZE);
+    printf("RAM size: %lu bytes\n", memorySize);
+    printf("Stack size: %lu bytes\n", __ZLVM_STACK_SIZE);
     printf("\n");
 
     byte* buffer;
@@ -21,10 +29,10 @@ int main() {
     buffer = readSource(test_source, &size);
 
     struct VirtualMachine vm = {};
-    initialize(&vm);
-    loadDump(&vm, buffer, size);
+    vm_initialize(&vm, memorySize);
+    vm_loadDump(&vm, buffer, size);
     free(buffer);
-    enum State state = run(&vm);
+    enum State state = vm_run(&vm);
 
     printf("Result code: %d\n", state);
     printState(state);
@@ -32,12 +40,14 @@ int main() {
     return state;
 }
 
-byte* readFile(const char* path, size_t* __size) {
+static byte* readFile(const char* path, size_t* __size) {
     size_t size = 0;
-    byte* buffer = (byte*) malloc(__ZLVM_MEMORY_SIZE);
+    byte* buffer = malloc_s(__ZLVM_ROM_SIZE);
+
     FILE* file = fopen(path, "rb");
 
-    for (size = 0; (size < __ZLVM_MEMORY_SIZE) && (!feof(file)); size++) {
+    for (size = 0; (size < __ZLVM_ROM_SIZE) && (!feof(file)); size++)
+    {
         buffer[size] = (byte) fgetc(file);
     }
 
@@ -47,10 +57,11 @@ byte* readFile(const char* path, size_t* __size) {
     return buffer;
 }
 
-byte* readSource(const char* path, size_t* size) {
+static byte* readSource(const char* path, size_t* size) {
     const size_t step_size = 1024;
     size_t cur_size = step_size;
-    char* source = (char*) malloc(sizeof(char) * cur_size);
+    char* source = malloc_s(sizeof(char) * cur_size);
+
     size_t i = 0;
 
     FILE* file = fopen(path, "r");
@@ -60,7 +71,7 @@ byte* readSource(const char* path, size_t* size) {
 
         if (i >= cur_size) {
             cur_size += step_size;
-            source = realloc(source, sizeof(char) * cur_size);
+            source = realloc_s(source, sizeof(char) * cur_size);
         }
     }
     fclose(file);
@@ -68,7 +79,7 @@ byte* readSource(const char* path, size_t* size) {
     return assembly(source, size);
 }
 
-void printState(enum State state) {
+static void printState(enum State state) {
     switch (state) {
         case S_NORMAL:
             printf("Normal");
