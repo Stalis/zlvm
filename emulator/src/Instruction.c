@@ -2,7 +2,7 @@
 // Created by Stanislav on 2019-06-06.
 //
 
-#include "Instruction.h"
+#include "../../include/Instruction.h"
 #include <printf.h>
 
 void instruction_print(Instruction* i) {

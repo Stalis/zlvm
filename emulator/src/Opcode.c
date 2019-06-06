@@ -3,7 +3,7 @@
 // Created by Stanislav on 2019-05-27.
 //
 
-#include "../include/Opcode.h"
+#include "../../include/Opcode.h"
 
 /**
  * Returns opcode mnemonic

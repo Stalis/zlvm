@@ -4,6 +4,8 @@
 //
 
 #include <memory.h>
+#include <assert.h>
+
 #include "Directive.h"
 #include "Memory.h"
 
@@ -58,13 +60,6 @@ void directive_free(struct Directive* d) {
 
         free(d);
     }
-}
-
-/*
- * Prints directive representation to stdout
- */
-void directive_print(struct Directive* d) {
-    assert(d != NULL);
 }
 
 static inline enum DirectiveType get_directive_type(Token* t) {

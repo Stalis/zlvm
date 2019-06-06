@@ -3,7 +3,7 @@
 // Created by Stanislav on 2019-04-26.
 //
 
-#include "../include/ALU.h"
+#include "../../include/ALU.h"
 
 void alu_compute(ALU* alu) {
     switch (alu->op_)

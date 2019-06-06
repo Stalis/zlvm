@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_LINKEDLIST_H
 #define ZLVM_C_LINKEDLIST_H
 
-#include "../../emulator/include/Types.h"
+#include "../Types.h"
 
 typedef struct LinkedListItem {
     void* value;

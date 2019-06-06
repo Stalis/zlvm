@@ -6,7 +6,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
 
 set(CMAKE_C_STANDARD 11)
 
-file(GLOB EXPORT_H include/*.h)
+file(GLOB EXPORT_H ${CMAKE_CURRENT_LIST_DIR}/../include/asm/*.h)
 file(GLOB HEADERS ${EXPORT_H} src/*.h)
 file(GLOB SOURCES src/*.c)
 
@@ -22,10 +22,10 @@ set_target_properties(zlasm zlasm-static
 add_executable(zlasm-bin main.c)
 target_link_libraries(zlasm-bin zlasm)
 
-target_include_directories(asmobjlib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-target_include_directories(zlasm PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-target_include_directories(zlasm-static PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-target_include_directories(zlasm-bin PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(asmobjlib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
+target_include_directories(zlasm PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
+target_include_directories(zlasm-static PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
+target_include_directories(zlasm-bin PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
 
 set_target_properties(zlasm-bin zlasm-static
         PROPERTIES OUTPUT_NAME zlasm)

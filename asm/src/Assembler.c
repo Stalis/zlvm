@@ -4,12 +4,13 @@
 //
 
 #include <ctype.h>
+#include <assert.h>
 
-#include "Assembler.h"
 #include "Memory.h"
-#include "../../emulator/include/Instruction.h"
-#include "../../emulator/include/Registers.h"
-#include "../../emulator/include/zlvm.h"
+#include "Instruction.h"
+#include "Registers.h"
+#include "zlvm.h"
+#include "Assembler.h"
 
 inline static void line_to_lower(char* line) {
     char* p = line;
@@ -169,7 +170,7 @@ void asm_processLabels(AssemblerContext* ctx) {
         {
             labelTable_setOrCreate(ctx->labels, strdup(last->value->label), addr);
 #ifdef DEBUG
-            printf("%s: 0x%lX\n", last->value->label, addr);
+//            printf("%s: 0x%lX\n", last->value->label, addr);
 #endif
         }
         if (last->value->type == L_STMT)
@@ -255,7 +256,9 @@ byte* asm_translate(AssemblerContext* ctx, size_t* __size) {
 
             length = sizeof(Instruction);
             buf = (byte*) &instr;
-            instruction_print(&instr);
+#ifdef DEBUG
+//            instruction_print(&instr);
+#endif
         }
         else if (cur->value->type == L_RAW)
         {

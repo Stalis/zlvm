@@ -7,7 +7,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../emulator/include/Types.h"
+#include "Types.h"
+
+#ifndef __dead2
+#define __dead2
+#endif
 
 #define ZLVM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 

@@ -6,6 +6,8 @@
 #include <memory.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <assert.h>
+
 #include "Lexer.h"
 #include "Memory.h"
 

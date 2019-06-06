@@ -4,12 +4,12 @@
 // Created by Stanislav on 2019-06-04.
 //
 
+#include "zlasm.h"
 #include <Lexer.h>
 #include <Parser.h>
 #include <Assembler.h>
-#include "zlasm.h"
 
-byte* assembly(char* source, size_t* __size) {
+byte* assemblySource(char* source, size_t* binarySize) {
     byte* res;
 
     LexerState* lexer = malloc(sizeof(LexerState));
@@ -18,7 +18,6 @@ byte* assembly(char* source, size_t* __size) {
     Token* tok = lexer_readToken(lexer);
     while (tok != NULL)
     {
-        token_print(tok);
         tok = lexer_readToken(lexer);
     }
 
@@ -32,7 +31,7 @@ byte* assembly(char* source, size_t* __size) {
     asm_processDirectives(assembler, parser);
     free(parser);
     asm_processLabels(assembler);
-    res = asm_translate(assembler, __size);
+    res = asm_translate(assembler, binarySize);
 
     free(assembler);
 

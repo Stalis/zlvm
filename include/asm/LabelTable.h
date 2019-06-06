@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_LABELTABLE_H
 #define ZLVM_C_LABELTABLE_H
 
-#include "../../emulator/include/Types.h"
+#include "../Types.h"
 
 typedef struct LabelInfo {
     const char* name;

@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_VIRTUALMACHINE_INTERNAL_H
 #define ZLVM_C_VIRTUALMACHINE_INTERNAL_H
 
-#include "VirtualMachine.h"
+#include "../../include/VirtualMachine.h"
 
 byte fetchByte(VirtualMachine*);
 Instruction fetchInstruction(VirtualMachine*);

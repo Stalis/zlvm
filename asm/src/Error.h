@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../emulator/include/Types.h"
+#include "../../include/Types.h"
 
 #define ZLASM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 #define ZLASM__TOKEN_CRASH(msg, token) \

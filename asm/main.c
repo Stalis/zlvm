@@ -3,20 +3,93 @@
 //
 // Created by Stanislav on 2019-05-27.
 //
-#include <VirtualMachine.h>
-#include "include/Lexer.h"
-#include "include/Parser.h"
-#include "include/Assembler.h"
-
-const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
+#include <stdio.h>
+#include <assert.h>
+#include "VirtualMachine.h"
+#include "asm/zlasm.h"
+#include "asm/Lexer.h"
+#include "asm/Parser.h"
+#include "asm/Assembler.h"
+#include "src/Memory.h"
 
 static void test_parser(const char* path);
+static byte* readSource(const char* path, size_t* size);
+static char* stripExtension(char* path);
+static void writeBinary(const char* path, byte* data, size_t size);
 
 int main(int argc, char** argv) {
+    if (argc <= 1) {
+        printf("Too few arguments");
+        exit(-1);
+    }
+
+    char* file = argv[1];
+
+#ifdef DEBUG
     test_parser(test_source);
+#endif
+
+    size_t size = 0;
+    byte* bin = readSource(file, &size);
+
+    stripExtension(file);
+    strcat(file, ".bin");
+
+    writeBinary(file, bin, size);
+
     return 0;
 }
 
+
+static byte* readSource(const char* path, size_t* size) {
+    const size_t step_size = 1024;
+    size_t cur_size = step_size;
+    char* source = malloc(sizeof(char) * cur_size);
+
+    size_t i = 0;
+
+    FILE* file = fopen(path, "r");
+    if (file == NULL) {
+        printf("File not found: %s", path);
+        exit(-1);
+    }
+
+    while (!feof(file)) {
+        source[i] = (char) fgetc(file);
+        i++;
+
+        if (i >= cur_size) {
+            cur_size += step_size;
+            source = realloc(source, sizeof(char) * cur_size);
+        }
+    }
+    fclose(file);
+
+    return assemblySource(source, size);
+}
+
+static char* stripExtension(char* path) {
+    char* end = path + strlen(path);
+    while (end > path && *end != '.') {
+        --end;
+    }
+
+    if (end > path) {
+        *end = '\0';
+    }
+
+    return path;
+}
+
+static void writeBinary(const char* path, byte* data, size_t size) {
+    FILE* file = fopen(path, "wb");
+    for (size_t i = 0; i < size; i++) {
+        fputc(data[i], file);
+    }
+    fclose(file);
+}
+
+#ifdef DEBUG
 static void test_parser(const char* path) {
     const size_t step_size = 1024;
     size_t cur_size = step_size;
@@ -88,3 +161,5 @@ static void test_parser(const char* path) {
     State state = vm_run(&vm);
     exit(state);
 }
+
+#endif

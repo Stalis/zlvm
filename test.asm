@@ -17,7 +17,7 @@ start:
         storew  $t2, $t0, 5192   ; 0x28
         movr    $a0, $t2    ; 0x30
 
-        nop ;jmpal   #add_until_carry   ; 0x38
+        jmpal   #add_until_carry   ; 0x38
 
         movi    $a0, #hello ; 0x40
         jmpal   #print_line ; 0x48

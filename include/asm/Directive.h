@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_DIRECTIVE_H
 #define ZLVM_C_DIRECTIVE_H
 
-#include "../../emulator/include/Types.h"
+#include "../Types.h"
 #include "Token.h"
 
 typedef enum DirectiveType {
@@ -16,7 +16,7 @@ typedef enum DirectiveType {
     DIR_ENTRY,
     DIR_LOCATE,
     /* Data directives */
-            DIR_ASCII, // Non-null-terminated string
+    DIR_ASCII, // Non-null-terminated string
     DIR_ASCIIZ, // Null-terminated string
     DIR_BYTE, // sequence of byte(8 bit) values
     DIR_HWORD, // sequence of half word(16 bit) values
@@ -24,7 +24,7 @@ typedef enum DirectiveType {
     DIR_DWORD, // sequence of double word(64 bit) values
     DIR_SPACE, // empty space for N bytes
     /* Other directives */
-            DIR_MACRO,
+    DIR_MACRO,
     DIR_ENDMACRO,
     DIR_PROC,
     DIR_ENDPROC,
@@ -55,15 +55,10 @@ void directive_free(Directive*);
 void directive_add_arg(Directive*, Token*);
 
 /**
- * @brief Prints directive representation to stdout
- */
-void directive_print(Directive*);
-
-/**
  * @brief Returns pointer to data directive raw data
  * @param __size pointer to write data size value
  */
-byte* directive_get_raw_data(Directive*, size_t* __size);
+uint8_t* directive_get_raw_data(Directive*, size_t* __size);
 
 /**
  * @param t type of directive

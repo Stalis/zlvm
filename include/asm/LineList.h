@@ -5,29 +5,8 @@
 #ifndef ZLVM_C_LINELIST_H
 #define ZLVM_C_LINELIST_H
 
-#include "../../emulator/include/Types.h"
-#include "Directive.h"
-#include "Statement.h"
-
-typedef enum LineType {
-    L_NONE, L_DIR, L_STMT, L_RAW
-} LineType;
-
-typedef struct RawData {
-    size_t size;
-    byte* data;
-} RawData;
-
-typedef struct Line {
-    LineType type;
-    char* label;
-    size_t size;
-    union {
-        Directive* dir;
-        Statement* stmt;
-        RawData* raw;
-    };
-} Line;
+#include "../Types.h"
+#include "Line.h"
 
 typedef struct LineList {
     struct Line* value;

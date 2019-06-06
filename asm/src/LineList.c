@@ -4,6 +4,8 @@
 //
 
 #include <printf.h>
+#include <assert.h>
+
 #include "LineList.h"
 #include "Memory.h"
 

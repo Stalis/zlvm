@@ -5,8 +5,6 @@
 #ifndef ZLVM_C_STATEMENT_H
 #define ZLVM_C_STATEMENT_H
 
-#include "../../emulator/include/Opcode.h"
-#include "../../emulator/include/Condition.h"
 #include "Token.h"
 
 typedef struct Statement {

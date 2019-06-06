@@ -2,18 +2,15 @@
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 #include <stdio.h>
 #include "VirtualMachine.h"
-#include "../asm/include/zlasm.h"
+#include "asm/zlasm.h"
 #include "src/Error.h"
 #include "src/Memory.h"
 
-static const char* test_file = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.bin";
-static const char* test_source = "/Users/stalis/Develop/Projects/zlvm/zlvm-c/test.asm";
-
-static byte* readFile(const char* path, size_t* size);
+static byte* readBinary(const char* path, size_t* size);
 static byte* readSource(const char* path, size_t* size);
 static void printState(enum State state);
 
-int main() {
+int main(int argc, const char** argv) {
     const size_t memorySize = 4096;
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
     printf("Operations count: %d\n", OPCODE_TOTAL);
@@ -21,12 +18,19 @@ int main() {
     printf("ROM size: %lu bytes\n", __ZLVM_ROM_SIZE);
     printf("RAM size: %lu bytes\n", memorySize);
     printf("Stack size: %lu bytes\n", __ZLVM_STACK_SIZE);
-    printf("\n");
+    printf("==========================================\n");
+
+    if (argc <= 1) {
+        printf("Too few arguments");
+        exit(-1);
+    }
+
+    const char* file = argv[1];
 
     byte* buffer;
     size_t size;
     //size = readFile(test_file, &buffer);
-    buffer = readSource(test_source, &size);
+    buffer = readSource(file, &size);
 
     struct VirtualMachine vm = {};
     vm_initialize(&vm, memorySize);
@@ -34,17 +38,22 @@ int main() {
     free(buffer);
     enum State state = vm_run(&vm);
 
+    printf("==========================================\n");
     printf("Result code: %d\n", state);
     printState(state);
 
     return state;
 }
 
-static byte* readFile(const char* path, size_t* __size) {
+static byte* readBinary(const char* path, size_t* __size) {
     size_t size = 0;
     byte* buffer = malloc_s(__ZLVM_ROM_SIZE);
 
     FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        printf("File not found: %s", path);
+        exit(-1);
+    }
 
     for (size = 0; (size < __ZLVM_ROM_SIZE) && (!feof(file)); size++)
     {
@@ -65,6 +74,11 @@ static byte* readSource(const char* path, size_t* size) {
     size_t i = 0;
 
     FILE* file = fopen(path, "r");
+    if (file == NULL) {
+        printf("File not found: %s", path);
+        exit(-1);
+    }
+
     while (!feof(file)) {
         source[i] = (char) fgetc(file);
         i++;
@@ -76,7 +90,7 @@ static byte* readSource(const char* path, size_t* size) {
     }
     fclose(file);
 
-    return assembly(source, size);
+    return assemblySource(source, size);
 }
 
 static void printState(enum State state) {
