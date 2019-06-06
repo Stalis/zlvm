@@ -13,7 +13,7 @@
 #include "Condition.h"
 #include "Instruction.h"
 
-static const size_t __ZLVM_ROM_SIZE = 1024;
+static const size_t __ZLVM_ROM_SIZE = 4096;
 static const size_t __ZLVM_STACK_SIZE = 256;
 static const size_t __ZLVM_REGISTER_COUNT = R_TOTAL;
 static const size_t __ZLVM_WORD_SIZE = sizeof(word);

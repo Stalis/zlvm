@@ -14,7 +14,7 @@ start:
         Pushi   0x1024  ; 0x10
         dup         ; 0x18
         popr    $t2 ; 0x20
-        storew  $t2, $t0, 256   ; 0x28
+        storew  $t2, $t0, 5192   ; 0x28
         movr    $a0, $t2    ; 0x30
 
         nop ;jmpal   #add_until_carry   ; 0x38

@@ -14,9 +14,13 @@ static byte* readSource(const char* path, size_t* size);
 static void printState(enum State state);
 
 int main() {
+    const size_t memorySize = 4096;
     printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
-    printf("Size of machine word: %lu bytes\n", __ZLVM_WORD_SIZE);
     printf("Operations count: %d\n", OPCODE_TOTAL);
+    printf("Size of machine word: %lu bytes\n", __ZLVM_WORD_SIZE);
+    printf("ROM size: %lu bytes\n", __ZLVM_ROM_SIZE);
+    printf("RAM size: %lu bytes\n", memorySize);
+    printf("Stack size: %lu bytes\n", __ZLVM_STACK_SIZE);
     printf("\n");
 
     byte* buffer;
@@ -25,7 +29,7 @@ int main() {
     buffer = readSource(test_source, &size);
 
     struct VirtualMachine vm = {};
-    vm_initialize(&vm, 1024);
+    vm_initialize(&vm, memorySize);
     vm_loadDump(&vm, buffer, size);
     free(buffer);
     enum State state = vm_run(&vm);

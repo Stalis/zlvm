@@ -91,10 +91,12 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
     word imm = instruction.immediate;
 
 #ifdef DEBUG
+    /*
     printf("[S: 0x%X LP: 0x%X]: ", readWord(vm, vm->_registers[R_SP].word_),
            vm->_registers[R_LP].word_);
     printf("0x%X: ", vm->_registers[R_PC].word_);
     instruction_print(&instruction);
+     */
 #endif
 
     switch (instruction.opcode_)
