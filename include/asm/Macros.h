@@ -1,23 +1,20 @@
-//
-// Created by Stanislav on 2019-06-03.
-//
-
-#ifndef ZLVM_C_MACROS_H
-#define ZLVM_C_MACROS_H
+#ifndef ZLVM_ASM_MACROS_H
+#define ZLVM_ASM_MACROS_H
 
 #include "Statement.h"
 
-struct MacrosContext {
+typedef struct MacrosContext {
+    size_t macro_count;
+} MacrosContext;
 
-};
-
-struct Macros {
-    const char** params;
-    Statement** lines;
-};
+typedef struct Macros {
+    const char **params;
+    Statement **lines;
+} Macros;
 
 typedef struct MacrosList {
-    struct Macros
+    Macros value;
+    struct MacrosList *next;
 } MacrosList;
 
-#endif //ZLVM_C_MACROS_H
+#endif // ZLVM_ASM_MACROS_H

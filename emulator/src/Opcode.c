@@ -1,13 +1,11 @@
 // Created by Stanislav on 2019-05-27.
 //
 
-#include "../../include/Opcode.h"
+#include "Opcode.h"
 
 #define GENERATE_STRING(STRING) #STRING,
 
-static const char* const opcode_strings[] = {
-        FOREACH_OPCODE(GENERATE_STRING)
-};
+static const char *const opcode_strings[] = {FOREACH_OPCODE(GENERATE_STRING)};
 
 #undef FOREACH_OPCODE
 #undef GENERATE_STRING
@@ -17,13 +15,10 @@ static const char* const opcode_strings[] = {
  * @param op opcode
  * @return mnemonic's null-terminated string
  */
-const char* opcode_to_string(Opcode op) {
-    if (op >= OPCODE_TOTAL)
-    {
+const char *opcode_to_string(Opcode op) {
+    if (op >= OPCODE_TOTAL) {
         return NULL;
-    }
-    else
-    {
+    } else {
         return opcode_strings[op];
     }
 }
@@ -33,12 +28,10 @@ const char* opcode_to_string(Opcode op) {
  * @param string mnemonic null-terminated string
  * @return opcode
  */
-Opcode string_to_opcode(const char* string) {
-    for (size_t i = 0; i < OPCODE_TOTAL; i++)
-    {
-        if (strcmp(string, opcode_strings[i]) == 0)
-        {
-            return (enum Opcode) i;
+Opcode string_to_opcode(const char *string) {
+    for (size_t index = 0; index < OPCODE_TOTAL; index++) {
+        if (strcmp(string, opcode_strings[index]) == 0) {
+            return (Opcode)index;
         }
     }
 

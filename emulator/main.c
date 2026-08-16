@@ -1,75 +1,91 @@
-#include <stdio.h>
 #include "VirtualMachine.h"
 #include "asm/zlasm.h"
-#include "src/Error.h"
 #include "src/Memory.h"
 
-static byte* readSource(const char* path, size_t* size);
-static void printState(enum State state);
+#include <stdio.h>
+#include <stdlib.h>
 
-int main(int argc, const char** argv) {
-    const size_t memorySize = 4096;
-    printf("Size of Instruction: %lu bytes\n", sizeof(struct Instruction));
+static byte *read_source(const char *path, size_t *binary_size);
+static void print_state(State state);
+
+int main(int argc, char **argv) {
+    const size_t memory_size = 4096;
+
+    printf("Size of Instruction: %zu bytes\n", sizeof(Instruction));
     printf("Operations count: %d\n", OPCODE_TOTAL);
     printf("Size of machine word: %d bytes\n", ZLVM_WORD_SIZE);
     printf("ROM size: %d bytes\n", ZLVM_ROM_SIZE);
-    printf("RAM size: %lu bytes\n", memorySize);
+    printf("RAM size: %zu bytes\n", memory_size);
     printf("Stack size: %d bytes\n", ZLVM_STACK_SIZE);
     printf("==========================================\n");
 
-    if (argc <= 1) {
-        printf("Too few arguments");
-        exit(-1);
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <assembly-file>\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
-    const char* file = argv[1];
+    size_t binary_size = 0;
+    byte *binary = read_source(argv[1], &binary_size);
 
-    byte* buffer;
-    size_t size;
-    //size = readFile(test_file, &buffer);
-    buffer = readSource(file, &size);
+    VirtualMachine vm = {0};
+    vm_initialize(&vm, memory_size);
+    vm_loadDump(&vm, binary, binary_size);
+    free(binary);
 
-    struct VirtualMachine vm = {0};
-    vm_initialize(&vm, memorySize);
-    vm_loadDump(&vm, buffer, size);
-    free(buffer);
-    enum State state = vm_run(&vm);
+    State state = vm_run(&vm);
+    vm_destroy(&vm);
 
     printf("==========================================\n");
     printf("Result code: %d\n", state);
-    printState(state);
+    print_state(state);
 
     return state;
 }
 
-static byte* readSource(const char* path, size_t* size) {
-    const size_t step_size = 1024;
-    size_t cur_size = step_size;
-    char* source = malloc_s(sizeof(char) * cur_size);
+static byte *read_source(const char *path, size_t *binary_size) {
+    const size_t growth_size = 1024;
+    size_t capacity = growth_size;
+    size_t length = 0;
+    char *source = vm_malloc(capacity + 1);
 
-    size_t i = 0;
-
-    FILE* file = fopen(path, "r");
+    FILE *file = fopen(path, "rb");
     if (file == NULL) {
-        printf("File not found: %s", path);
-        exit(-1);
+        fprintf(stderr, "Unable to open assembly source: %s\n", path);
+        exit(EXIT_FAILURE);
     }
 
-    while (!feof(file)) {
-        source[i] = (char) fgetc(file);
-        i++;
+    while (true) {
+        size_t available = capacity - length;
+        size_t bytes_read = fread(source + length, 1, available, file);
+        length += bytes_read;
 
-        if (i >= cur_size) {
-            cur_size += step_size;
-            source = realloc_s(source, sizeof(char) * cur_size);
+        if (bytes_read < available) {
+            if (ferror(file)) {
+                fprintf(stderr, "Unable to read assembly source: %s\n", path);
+                fclose(file);
+                free(source);
+                exit(EXIT_FAILURE);
+            }
+            break;
         }
-    }
-    fclose(file);
 
-    return assemblySource(source, size);
+        capacity += growth_size;
+        source = vm_realloc(source, capacity + 1);
+    }
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Unable to close assembly source: %s\n", path);
+        free(source);
+        exit(EXIT_FAILURE);
+    }
+
+    source[length] = '\0';
+    byte *binary = assemblySource(source, binary_size);
+    free(source);
+    return binary;
 }
 
-static void printState(enum State state) {
+static void print_state(State state) {
     switch (state) {
         case S_NORMAL:
             printf("Normal");
@@ -94,6 +110,7 @@ static void printState(enum State state) {
             break;
         default:
             printf("Unknown error");
+            break;
     }
     printf("\n");
 }

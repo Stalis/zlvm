@@ -1,20 +1,14 @@
-//
-// Created by Stanislav on 2019-05-27.
-//
+#ifndef ZLVM_ASM_ZLASM_H
+#define ZLVM_ASM_ZLASM_H
 
+#include "Types.h"
 
-#include "Token.h"
-#include "LineList.h"
+/**
+ * Assemble a NUL-terminated source buffer.
+ *
+ * The caller retains ownership of source and owns the returned buffer. The returned buffer must be
+ * released with free(). On success, binary_size receives its size in bytes.
+ */
+uint8_t *assemblySource(char *source, size_t *binary_size);
 
-#ifndef ZLVM_C_ZLASM_H
-#define ZLVM_C_ZLASM_H
-
-Token** tokenize(char* path, size_t* tokensCount);
-Line**  parse(Token** tokens, size_t tokensCount, size_t* linesCount);
-Line**  preprocess(Line** lines, size_t currentLinesCount, size_t* linesCount);
-
-uint8_t assemblyLines(Line** lines, size_t linesCount, size_t* binarySize);
-uint8_t* assemblySource(char* source, size_t* binarySize);
-uint8_t* assemblyFile(char* path, size_t* binarySize);
-
-#endif //ZLVM_C_ZLASM_H
+#endif // ZLVM_ASM_ZLASM_H

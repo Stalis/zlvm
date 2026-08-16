@@ -31,4 +31,4 @@ static inline bool is_error(State state) {
     return (state >= S_ERR_BEGIN) && (state <= S_ERR_END);
 }
 
-#endif //ZLVM_C_STATE_H
+#endif // ZLVM_C_STATE_H

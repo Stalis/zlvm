@@ -1,13 +1,13 @@
 // Created by Stanislav on 2019-05-07.
 //
 
-#include <memory.h>
+#include "Lexer.h"
+
+#include "Memory.h"
+
 #include <ctype.h>
 #include <stdio.h>
-#include <assert.h>
-
-#include "Lexer.h"
-#include "Memory.h"
+#include <string.h>
 
 enum {
     NEWLINE = '\n',
@@ -22,51 +22,47 @@ enum {
     DIGIT_DELIMITER = '_',
 };
 
-static inline bool is_eof(char);
-static inline bool is_ignored_char(char);
-static inline bool is_hex_char(char);
-static inline bool is_dec_char(char);
-static inline bool is_oct_char(char);
-static inline bool is_bin_char(char);
+static bool is_eof(char character);
+static bool is_ignored_char(char character);
+static bool is_hex_char(char character);
+static bool is_dec_char(char character);
+static bool is_oct_char(char character);
+static bool is_bin_char(char character);
 
-static inline void remove_digit_delimiters(char*, size_t);
+static void remove_digit_delimiters(char *string, size_t size);
 
-static void tokenlist_add(struct TokenList*, struct Token*);
-static void tokenlist_free(struct TokenList*);
+static void token_list_add(struct TokenList *, struct Token *);
+static void token_list_free(struct TokenList *);
 
-struct TokenStream* tokenStream_new(struct TokenList* l) {
-    struct TokenStream* res = malloc(sizeof(struct TokenStream));
-    res->_first = l;
-    return res;
+TokenStream *tokenStream_new(TokenList *list) {
+    TokenStream *stream = asm_malloc(sizeof *stream);
+    stream->_first = list;
+    return stream;
 }
 
-struct Token* tokenStream_read(TokenStream* stream) {
-    if (NULL == stream->_first)
-    {
+Token *tokenStream_read(TokenStream *stream) {
+    if (stream->_first == NULL) {
         return NULL;
     }
-    struct Token* buf = stream->_first->value;
+    Token *token = stream->_first->value;
     stream->_first->value = NULL;
     stream->_first = stream->_first->next;
-    return buf;
+    return token;
 }
 
-bool tokenStream_isEof(TokenStream* stream) {
-    return NULL == stream->_first || NULL == stream->_first->value;
+bool tokenStream_isEof(TokenStream *stream) {
+    return stream->_first == NULL || stream->_first->value == NULL;
 }
 
-struct Token* tokenStream_peek(struct TokenStream* stream) {
-    if (NULL == stream->_first)
-    {
+Token *tokenStream_peek(TokenStream *stream) {
+    if (stream->_first == NULL) {
         return NULL;
     }
     return stream->_first->value;
 }
 
-void lexer_init(struct LexerState* state, char* source) {
-    state->_tokens = (struct TokenList*) malloc(sizeof(struct TokenList));
-    state->_tokens->value = NULL;
-    state->_tokens->next = NULL;
+void lexer_init(LexerState *state, char *source) {
+    state->_tokens = asm_calloc(1, sizeof *state->_tokens);
     state->source = source;
     state->_len = strlen(source);
     state->pos = 0;
@@ -74,266 +70,266 @@ void lexer_init(struct LexerState* state, char* source) {
     state->col = 1;
 }
 
-char lexer_peekChar(struct LexerState* s) {
-    return s->source[s->pos];
+char lexer_peekChar(LexerState *state) {
+    return state->source[state->pos];
 }
 
-char lexer_nextChar(struct LexerState* s) {
-    if (s->pos >= s->_len)
+char lexer_nextChar(LexerState *state) {
+    if (state->pos >= state->_len) {
         return 0;
+    }
 
-    char val = s->source[++s->pos];
-    if (val == '\n') {
-        s->line++;
-        s->col = 1;
+    char value = state->source[++state->pos];
+    if (value == '\n') {
+        state->line++;
+        state->col = 1;
     } else {
-        s->col++;
+        state->col++;
     }
-    return val;
+    return value;
 }
 
-char* lexer_ahead(struct LexerState* l) {
-    return (l->source + l->pos);
+char *lexer_ahead(LexerState *state) {
+    return state->source + state->pos;
 }
 
-struct Token* lexer_readToken(struct LexerState* s) {
-#define right (lexer_ahead(s))
+Token *lexer_readToken(LexerState *state) {
+#define CURRENT (lexer_ahead(state))
 
-    char* first;
-    char* last = NULL;
+    char *first;
+    char *last = NULL;
     size_t value_size;
-    char c = *(right);
+    char c = *CURRENT;
     enum TokenType type;
-    struct Token* result;
+    struct Token *result;
 
-    size_t pos = s->pos, line = s->line, col = s->col;
+    size_t position = state->pos;
+    size_t line = state->line;
+    size_t column = state->col;
 
+    while (is_ignored_char(c)) {
+        c = lexer_nextChar(state);
 
-    while (is_ignored_char(c))
-    {
-        c = lexer_nextChar(s);
-
-        if (is_eof(c))
+        if (is_eof(c)) {
             return NULL;
+        }
     }
 
-    first = right;
-    c = lexer_peekChar(s);
+    first = CURRENT;
+    c = lexer_peekChar(state);
 
-    switch (c)
-    {
+    switch (c) {
         case NEWLINE:
-            c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
             type = TOK_NEWLINE;
             break;
 
         case COMMA:
-            c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
             type = TOK_COMMA;
             break;
 
         case COMMENT_MARK:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (c != NEWLINE && !is_eof(c)) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (c != NEWLINE && !is_eof(c)) {
+                c = lexer_nextChar(state);
+            }
             type = TOK_COMMENT;
             break;
 
         case LABEL_USE_MARK:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) {
+                c = lexer_nextChar(state);
+            }
             type = TOK_LABEL_USE;
             break;
 
         case REGISTER_MARK:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) {
+                c = lexer_nextChar(state);
+            }
             type = TOK_REGISTER;
             break;
 
         case DIRECTIVE_MARK:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) {
+                c = lexer_nextChar(state);
+            }
             type = TOK_DIRECTIVE;
             break;
 
         case STRING_QUOTE:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (c != STRING_QUOTE) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (c != STRING_QUOTE) {
+                if (is_eof(c)) {
+                    ZLASM_CRASH("Unterminated string literal");
+                }
+                c = lexer_nextChar(state);
+            }
             type = TOK_STRING_LITERAL;
-            last = s->source + (s->pos++);
+            last = state->source + state->pos++;
             break;
 
         case CHAR_QUOTE:
-            c = lexer_nextChar(s);
-            first = s->source + s->pos;
-            while (c != CHAR_QUOTE) c = lexer_nextChar(s);
+            c = lexer_nextChar(state);
+            first = state->source + state->pos;
+            while (c != CHAR_QUOTE) {
+                if (is_eof(c)) {
+                    ZLASM_CRASH("Unterminated character literal");
+                }
+                c = lexer_nextChar(state);
+            }
             type = TOK_CHAR_LITERAL;
-            last = s->source + (s->pos++);
+            last = state->source + state->pos++;
             break;
 
-        default:
-        {
-            if (is_dec_char(c))
-            {
-                if (c == '0')
-                {
-                    char mark = *(right + 1);
-                    switch (mark)
-                    {
-                        case 'X':
-                        case 'x':
-                        case 'O':
-                        case 'o':
-                        case 'B':
-                        case 'b':
-                            lexer_nextChar(s);
-                            lexer_nextChar(s);
-                            first = right;
-                            if (mark == 'X' || mark == 'x') {
-                                while (is_hex_char(c)) c = lexer_nextChar(s);
-                                type = TOK_INT_HEX;
-                            } else if (mark == 'O' || mark == 'o') {
-                                while (is_oct_char(c)) c = lexer_nextChar(s);
-                                type = TOK_INT_OCT;
-                            } else {
-                                while (is_bin_char(c)) c = lexer_nextChar(s);
-                                type = TOK_INT_BIN;
-                            }
-                            break;
+        default: {
+            if (is_dec_char(c)) {
+                char prefix = c == '0' ? CURRENT[1] : '\0';
+                bool has_prefix = prefix == 'x' || prefix == 'X' || prefix == 'o' ||
+                                  prefix == 'O' || prefix == 'b' || prefix == 'B';
+                if (has_prefix) {
+                    lexer_nextChar(state);
+                    lexer_nextChar(state);
+                    first = CURRENT;
+                    c = lexer_peekChar(state);
 
-                        default:
-                            goto __parse_int_dec;
+                    if (prefix == 'x' || prefix == 'X') {
+                        while (is_hex_char(c)) {
+                            c = lexer_nextChar(state);
+                        }
+                        type = TOK_INT_HEX;
+                    } else if (prefix == 'o' || prefix == 'O') {
+                        while (is_oct_char(c)) {
+                            c = lexer_nextChar(state);
+                        }
+                        type = TOK_INT_OCT;
+                    } else {
+                        while (is_bin_char(c)) {
+                            c = lexer_nextChar(state);
+                        }
+                        type = TOK_INT_BIN;
                     }
-                }
-                else
-                {
-                __parse_int_dec:
-                    while (is_dec_char(c)) c = lexer_nextChar(s);
+                } else {
+                    while (is_dec_char(c)) {
+                        c = lexer_nextChar(state);
+                    }
                     type = TOK_INT_DEC;
-                    break;
                 }
-            }
-            else
-            {
-                while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) c = lexer_nextChar(s);
-                if (*(right - 1) == LABEL_INIT_MARK)
-                {
-                    last = right - 1;
+            } else {
+                while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) {
+                    c = lexer_nextChar(state);
+                }
+                if (*(CURRENT - 1) == LABEL_INIT_MARK) {
+                    last = CURRENT - 1;
                     type = TOK_LABEL_INIT;
-                }
-                else
-                {
+                } else {
                     type = TOK_ID;
                 }
             }
-        }
-            break;
+        } break;
     }
 
-    if (last == NULL) last = right;
-    value_size = last - first;
+    if (last == NULL) {
+        last = CURRENT;
+    }
+    value_size = (size_t)(last - first);
 
-    result = (struct Token*) malloc(sizeof(struct Token));
+    result = asm_malloc(sizeof *result);
     result->size = value_size;
     result->type = type;
-    result->value = (char*) calloc(value_size + 1, sizeof(char));
-    strncpy(result->value, first, value_size);
+    result->value = asm_calloc(value_size + 1, sizeof *result->value);
+    memcpy(result->value, first, value_size);
 
-    result->pos = pos;
+    result->pos = position;
     result->line = line;
-    result->col = col;
+    result->col = column;
 
-    switch (result->type)
-    {
+    switch (result->type) {
         case TOK_INT_HEX:
         case TOK_INT_DEC:
         case TOK_INT_OCT:
         case TOK_INT_BIN:
             remove_digit_delimiters(result->value, result->size);
             result->size = strlen(result->value);
-            result->value = realloc(result->value, result->size + 1);
+            result->value = asm_realloc(result->value, result->size + 1);
         default:
             break;
     }
 
-    tokenlist_add(s->_tokens, result);
+    token_list_add(state->_tokens, result);
     return result;
-#undef right
+#undef CURRENT
 }
 
-static void tokenlist_add(struct TokenList* list, struct Token* t) {
-    struct TokenList* buf = list;
-    if (NULL == list->value)
-    {
-        list->value = t;
-    }
-    else
-    {
-        while (buf->next != NULL)
-        {
-            buf = buf->next;
+static void token_list_add(TokenList *list, Token *token) {
+    TokenList *last = list;
+    if (list->value == NULL) {
+        list->value = token;
+    } else {
+        while (last->next != NULL) {
+            last = last->next;
         }
-        buf->next = calloc(1, sizeof(struct TokenList));
-        buf->next->value = t;
+        last->next = asm_calloc(1, sizeof *last->next);
+        last->next->value = token;
     }
 }
 
-static inline bool is_eof(char c) {
-    return (c == (char) EOF) || (c == '\0');
+static bool is_eof(char character) {
+    return character == '\0';
 }
 
-static inline bool is_ignored_char(char c) {
-    return ((isspace(c) != 0) && (c != NEWLINE)) || is_eof(c);
+static bool is_ignored_char(char character) {
+    return (isspace((unsigned char)character) != 0 && character != NEWLINE) || is_eof(character);
 }
 
-static inline bool is_hex_char(char c) {
-    return (isxdigit(c) != 0 || c == DIGIT_DELIMITER);
+static bool is_hex_char(char character) {
+    return isxdigit((unsigned char)character) != 0 || character == DIGIT_DELIMITER;
 }
 
-static inline bool is_dec_char(char c) {
-    return (isdigit(c) != 0 || c == DIGIT_DELIMITER);
+static bool is_dec_char(char character) {
+    return isdigit((unsigned char)character) != 0 || character == DIGIT_DELIMITER;
 }
 
-static inline bool is_oct_char(char c) {
-    return ((c >= '0' && c <= '7') || c == DIGIT_DELIMITER);
+static bool is_oct_char(char character) {
+    return (character >= '0' && character <= '7') || character == DIGIT_DELIMITER;
 }
 
-static inline bool is_bin_char(char c) {
-    return ((c >= '0' && c <= '1') || c == DIGIT_DELIMITER);
+static bool is_bin_char(char character) {
+    return (character >= '0' && character <= '1') || character == DIGIT_DELIMITER;
 }
 
-static inline void remove_digit_delimiters(char* string, size_t __size) {
-    char* buf = (char*) calloc(__size, sizeof(char));
-    size_t buf_i = 0;
-
-    for (size_t i = 0; i < __size; i++)
-    {
-        if (string[i] != DIGIT_DELIMITER)
-        {
-            buf[buf_i++] = string[i];
+static void remove_digit_delimiters(char *string, size_t size) {
+    size_t output_index = 0;
+    for (size_t input_index = 0; input_index < size; input_index++) {
+        if (string[input_index] != DIGIT_DELIMITER) {
+            string[output_index++] = string[input_index];
         }
     }
-    strncpy(string, buf, __size);
-    free(buf);
+    string[output_index] = '\0';
 }
 
-static void tokenlist_free(struct TokenList* list) {
-    if (list->next != NULL)
-    {
-        tokenlist_free(list->next);
+static void token_list_free(struct TokenList *list) {
+    if (list->next != NULL) {
+        token_list_free(list->next);
     }
-    if (list->value != NULL)
-    {
+    if (list->value != NULL) {
         token_free(list->value);
     }
-    free(list);
+    asm_free(list);
 }
 
-void lexer_clear(struct LexerState* state) {
-    tokenlist_free(state->_tokens);
+void lexer_clear(LexerState *state) {
+    if (state != NULL && state->_tokens != NULL) {
+        token_list_free(state->_tokens);
+        state->_tokens = NULL;
+    }
 }

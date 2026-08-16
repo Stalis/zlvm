@@ -1,38 +1,28 @@
-//
-// Created by Stanislav on 2019-05-06.
-//
+#ifndef ZLVM_ASM_ERROR_H
+#define ZLVM_ASM_ERROR_H
 
-#ifndef ZLASM_C_ERROR_H
-#define ZLASM_C_ERROR_H
+#include "Types.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../../include/Types.h"
 
-#define ZLASM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
-#define ZLASM__TOKEN_CRASH(msg, token) \
-    _token_crash(msg, (token->pos), (token->line), (token->col), (token->value),__FILE__, __LINE__)
+#define ZLASM_CRASH(message) asm_crash((message), __FILE__, __LINE__)
+#define ZLASM_TOKEN_CRASH(message, token)                                                          \
+    asm_token_crash((message), (token)->pos, (token)->line, (token)->col, (token)->value,          \
+                    __FILE__, __LINE__)
 
-static inline _Noreturn void
-_token_crash(const char* msg, size_t pos, size_t line, size_t col, const char* val, const char* __file,
-             size_t __line) {
-    fprintf(stderr, "Error at %s:%lu\n\t (%4lu:%3lu:%2lu): %s (%s)",
-            __file, __line, pos, line, col, msg, val);
-    exit(-2);
+static inline _Noreturn void asm_token_crash(const char *message, size_t position, size_t line,
+                                             size_t column, const char *value,
+                                             const char *source_file, size_t source_line) {
+    fprintf(stderr, "Error at %s:%zu\n\t(%4zu:%3zu:%2zu): %s (%s)\n", source_file, source_line,
+            position, line, column, message, value);
+    exit(EXIT_FAILURE);
 }
 
-static _Noreturn void _crash(const char* msg, const char* file, size_t line) {
-    fprintf(stderr, "Crash at %s:%lu: %s", file, line, msg);
-    exit(-1);
+static inline _Noreturn void asm_crash(const char *message, const char *source_file,
+                                       size_t source_line) {
+    fprintf(stderr, "Crash at %s:%zu: %s\n", source_file, source_line, message);
+    exit(EXIT_FAILURE);
 }
 
-static inline _Noreturn void _errorCode(const char* msg, word code) {
-    fprintf(stderr, "Error: %s", msg);
-    exit(code);
-}
-
-static inline void _error(const char* msg) {
-    _errorCode(msg, 0);
-}
-
-#endif //ZLASM_C_ERROR_H
+#endif // ZLVM_ASM_ERROR_H

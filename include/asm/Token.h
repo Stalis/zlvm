@@ -31,7 +31,7 @@ typedef enum TokenType {
 typedef struct Token {
     TokenType type;
     size_t size;
-    char* value;
+    char *value;
 
     size_t pos;
     size_t line;
@@ -41,19 +41,19 @@ typedef struct Token {
 /**
  * Prints token representation to STDOUT
  */
-void token_print(Token*);
+void token_print(Token *);
 
 /**
  * Free memory, used by token
  */
-void token_free(Token*);
+void token_free(Token *);
 
-dword token_get_int_value(Token* t);
+dword token_get_int_value(Token *token);
 
-char token_get_char_value(char* t);
+char token_get_char_value(char *value);
 
-byte* token_get_string_value(char* val, size_t* __size);
+byte *token_get_string_value(char *value, size_t *output_size);
 
-byte* token_get_raw_data(Token* t, size_t* __size);
+byte *token_get_raw_data(Token *token, size_t *output_size);
 
-#endif //ZLVM_C_TOKEN_H
+#endif // ZLVM_C_TOKEN_H

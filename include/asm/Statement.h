@@ -8,13 +8,13 @@
 #include "Token.h"
 
 typedef struct Statement {
-    Token* opcode;
-    Token* cond;
-    Token* reg1;
-    Token* reg2;
-    Token* imm;
+    Token *opcode;
+    Token *cond;
+    Token *reg1;
+    Token *reg2;
+    Token *imm;
 } Statement;
 
-void statement_init(Statement*);
+void statement_init(Statement *statement);
 
-#endif //ZLVM_C_STATEMENT_H
+#endif // ZLVM_C_STATEMENT_H

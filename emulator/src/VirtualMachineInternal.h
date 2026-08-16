@@ -2,39 +2,39 @@
 // Created by Stanislav on 2019-05-27.
 //
 
-#ifndef ZLVM_C_VIRTUALMACHINE_INTERNAL_H
-#define ZLVM_C_VIRTUALMACHINE_INTERNAL_H
+#ifndef ZLVM_EMULATOR_VIRTUAL_MACHINE_INTERNAL_H
+#define ZLVM_EMULATOR_VIRTUAL_MACHINE_INTERNAL_H
 
-#include "../../include/VirtualMachine.h"
+#include "VirtualMachine.h"
 
-byte fetchByte(VirtualMachine*);
-Instruction fetchInstruction(VirtualMachine*);
-void runInstruction(VirtualMachine*, Instruction);
-bool checkCondition(VirtualMachine*, Condition);
+byte vm_fetch_byte(VirtualMachine *);
+Instruction vm_fetch_instruction(VirtualMachine *);
+void vm_run_instruction(VirtualMachine *, Instruction);
+bool vm_check_condition(VirtualMachine *, Condition);
 
-byte readByte(VirtualMachine* this, size_t address);
-void writeByte(VirtualMachine* this, size_t address, byte value);
+byte vm_read_byte(VirtualMachine *vm, size_t address);
+void vm_write_byte(VirtualMachine *vm, size_t address, byte value);
 
-hword readHword(struct VirtualMachine* this, size_t address);
-void writeHword(struct VirtualMachine* this, size_t address, hword value);
+hword vm_read_hword(struct VirtualMachine *vm, size_t address);
+void vm_write_hword(struct VirtualMachine *vm, size_t address, hword value);
 
-word readWord(struct VirtualMachine* this, size_t address);
-void writeWord(struct VirtualMachine* this, size_t address, word value);
+word vm_read_word(struct VirtualMachine *vm, size_t address);
+void vm_write_word(struct VirtualMachine *vm, size_t address, word value);
 
-dword readDword(struct VirtualMachine* this, size_t address);
-void writeDword(struct VirtualMachine* this, size_t address, dword value);
+dword vm_read_dword(struct VirtualMachine *vm, size_t address);
+void vm_write_dword(struct VirtualMachine *vm, size_t address, dword value);
 
-word popWord(struct VirtualMachine* this);
-void pushWord(struct VirtualMachine* this, word value);
+word vm_pop_word(struct VirtualMachine *vm);
+void vm_push_word(struct VirtualMachine *vm, word value);
 
-bool notError(struct VirtualMachine*);
-bool checkState(struct VirtualMachine*, enum State);
-void setState(struct VirtualMachine*, enum State);
-enum State getState(struct VirtualMachine*);
+bool vm_has_no_error(struct VirtualMachine *);
+bool vm_has_state(struct VirtualMachine *, enum State);
+void vm_set_state(struct VirtualMachine *, enum State);
+enum State vm_get_state(struct VirtualMachine *);
 
-void doOperation(struct VirtualMachine*, enum Operation, word, word);
+void vm_do_operation(struct VirtualMachine *, enum Operation, word, word);
 
-void interrupt(struct VirtualMachine*, word code);
-void syscall(struct VirtualMachine*);
+void vm_interrupt(struct VirtualMachine *, word code);
+void vm_syscall(struct VirtualMachine *);
 
-#endif //ZLVM_C_VIRTUALMACHINE_INTERNAL_H
+#endif // ZLVM_EMULATOR_VIRTUAL_MACHINE_INTERNAL_H
