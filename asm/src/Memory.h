@@ -5,6 +5,9 @@
 #ifndef ZLVM_C_MEMORY_H
 #define ZLVM_C_MEMORY_H
 
+#include <assert.h>
+#include <string.h>
+
 #include "Error.h"
 
 static inline void* malloc_s(size_t __size) {

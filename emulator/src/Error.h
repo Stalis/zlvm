@@ -9,18 +9,14 @@
 #include <stdlib.h>
 #include "Types.h"
 
-#ifndef __dead2
-#define __dead2
-#endif
-
 #define ZLVM__CRASH(msg) _crash(msg, __FILE__, __LINE__)
 
-static void _crash(const char* msg, const char* file, size_t line) __dead2 {
+static _Noreturn void _crash(const char* msg, const char* file, size_t line) {
     fprintf(stderr, "Crash at %s:%lu: %s", file, line, msg);
     exit(-1);
 }
 
-static inline void _errorCode(const char* msg, word code) __dead2 {
+static inline _Noreturn void _errorCode(const char* msg, word code) {
     fprintf(stderr, "Error: %s", msg);
     exit(code);
 }

@@ -13,16 +13,18 @@
 #include "Condition.h"
 #include "Instruction.h"
 
-static const size_t __ZLVM_ROM_SIZE = 4096;
-static const size_t __ZLVM_STACK_SIZE = 256;
-static const size_t __ZLVM_REGISTER_COUNT = R_TOTAL;
-static const size_t __ZLVM_WORD_SIZE = sizeof(word);
+enum {
+    ZLVM_ROM_SIZE = 4096,
+    ZLVM_STACK_SIZE = 256,
+    ZLVM_REGISTER_COUNT = R_TOTAL,
+    ZLVM_WORD_SIZE = sizeof(word),
+};
 
 typedef struct VirtualMachine {
     CPSR _cpsr;
     ALU _alu;
-    Value _registers[__ZLVM_REGISTER_COUNT];
-    byte _rom[__ZLVM_ROM_SIZE];
+    Value _registers[ZLVM_REGISTER_COUNT];
+    byte _rom[ZLVM_ROM_SIZE];
     byte* _memory;
     size_t _memorySize;
 } VirtualMachine;

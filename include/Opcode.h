@@ -67,20 +67,12 @@
     OPCODE(MODSI)
 
 #define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
-
 typedef enum Opcode {
     FOREACH_OPCODE(GENERATE_ENUM)
     OPCODE_TOTAL,
 } Opcode;
 
-static const char* opcode_strings[] = {
-        FOREACH_OPCODE(GENERATE_STRING)
-};
-
-#undef FOREACH_OPCODE
 #undef GENERATE_ENUM
-#undef GENERATE_STRING
 
 /**
  * Returns opcode mnemonic

@@ -1,9 +1,7 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-14.
 //
 
-#include <printf.h>
+#include <stdio.h>
 #include <assert.h>
 
 #include "LineList.h"
@@ -58,13 +56,6 @@ void line_print(struct Line* l) {
     }
     else if (l->type == L_DIR)
     {
-        size_t len = 0;
-        for (size_t i = 0; i < l->dir->argc; i++)
-        {
-            len += l->dir->argv[i]->size;
-            len += 1;
-        }
-
         printf(".%d", l->dir->type);
         for (size_t i = 0; i < l->dir->argc; i++)
         {

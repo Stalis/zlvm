@@ -1,11 +1,9 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 //
 // Created by Stanislav on 2019-06-06.
 //
 
 #include "../../include/Instruction.h"
-#include <printf.h>
+#include <stdio.h>
 
 void instruction_print(Instruction* i) {
     const char* opcode = opcode_to_string(i->opcode_);

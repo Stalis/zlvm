@@ -1,9 +1,16 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-27.
 //
 
 #include "../../include/Opcode.h"
+
+#define GENERATE_STRING(STRING) #STRING,
+
+static const char* const opcode_strings[] = {
+        FOREACH_OPCODE(GENERATE_STRING)
+};
+
+#undef FOREACH_OPCODE
+#undef GENERATE_STRING
 
 /**
  * Returns opcode mnemonic

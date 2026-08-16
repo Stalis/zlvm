@@ -1,5 +1,3 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-06-01.
 //
 
@@ -11,11 +9,6 @@
 #include "Registers.h"
 #include "zlvm.h"
 #include "Assembler.h"
-
-inline static void line_to_lower(char* line) {
-    char* p = line;
-    for (; *p; ++p) *p = (char) tolower(*p);
-}
 
 inline static void line_to_upper(char* line) {
     char* p = line;

@@ -1,5 +1,3 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-05-07.
 //
 
@@ -11,20 +9,21 @@
 #include "Lexer.h"
 #include "Memory.h"
 
-static const char NEWLINE = '\n';
-static const char COMMA = ',';
-static const char COMMENT_MARK = ';';
-static const char LABEL_INIT_MARK = ':';
-static const char LABEL_USE_MARK = '#';
-static const char REGISTER_MARK = '$';
-static const char DIRECTIVE_MARK = '.';
-static const char STRING_QUOTE = '"';
-static const char CHAR_QUOTE = '\'';
-static const char DIGIT_DELIMITER = '_';
+enum {
+    NEWLINE = '\n',
+    COMMA = ',',
+    COMMENT_MARK = ';',
+    LABEL_INIT_MARK = ':',
+    LABEL_USE_MARK = '#',
+    REGISTER_MARK = '$',
+    DIRECTIVE_MARK = '.',
+    STRING_QUOTE = '"',
+    CHAR_QUOTE = '\'',
+    DIGIT_DELIMITER = '_',
+};
 
 static inline bool is_eof(char);
 static inline bool is_ignored_char(char);
-static inline bool is_id_char(char);
 static inline bool is_hex_char(char);
 static inline bool is_dec_char(char);
 static inline bool is_oct_char(char);
@@ -290,10 +289,6 @@ static inline bool is_eof(char c) {
 
 static inline bool is_ignored_char(char c) {
     return ((isspace(c) != 0) && (c != NEWLINE)) || is_eof(c);
-}
-
-static inline bool is_id_char(char c) {
-    return (isalpha(c) != 0 || c == DIGIT_DELIMITER);
 }
 
 static inline bool is_hex_char(char c) {

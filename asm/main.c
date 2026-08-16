@@ -1,5 +1,3 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 //
 // Created by Stanislav on 2019-05-27.
 //
@@ -12,7 +10,9 @@
 #include "asm/Assembler.h"
 #include "src/Memory.h"
 
+#ifdef DEBUG
 static void test_parser(const char* path);
+#endif
 static byte* readSource(const char* path, size_t* size);
 static char* stripExtension(char* path);
 static void writeBinary(const char* path, byte* data, size_t size);

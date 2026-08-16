@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 4.4.2)
 project(zlasm C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS On)

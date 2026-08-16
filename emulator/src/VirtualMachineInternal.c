@@ -1,17 +1,15 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 // Created by Stanislav on 2019-04-26.
 //
 #include "VirtualMachineInternal.h"
-#include <printf.h>
+#include <stdio.h>
 #include "Memory.h"
 
 #if DEBUG
 
 static inline void printRegisters(VirtualMachine* vm, byte columns) {
-    for (word i = 0; i < __ZLVM_REGISTER_COUNT; i += columns)
+    for (word i = 0; i < ZLVM_REGISTER_COUNT; i += columns)
     {
-        for (byte j = 0; j < columns && (i + j) < __ZLVM_REGISTER_COUNT; j++)
+        for (byte j = 0; j < columns && (i + j) < ZLVM_REGISTER_COUNT; j++)
         {
             printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
         }
@@ -27,11 +25,11 @@ static inline void printRegisters(VirtualMachine* vm, byte columns) {
 #endif
 
 void vm_initialize(VirtualMachine* vm, size_t ram_size) {
-    for (size_t i = 0; i < __ZLVM_REGISTER_COUNT; i++)
+    for (size_t i = 0; i < ZLVM_REGISTER_COUNT; i++)
     {
         vm->_registers[i].word_ = 0;
     }
-    for (size_t i = 0; i < __ZLVM_ROM_SIZE; i++)
+    for (size_t i = 0; i < ZLVM_ROM_SIZE; i++)
     {
         vm->_rom[i] = 0;
     }
@@ -44,7 +42,7 @@ void vm_initialize(VirtualMachine* vm, size_t ram_size) {
 }
 
 void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
-    if (size > __ZLVM_ROM_SIZE)
+    if (size > ZLVM_ROM_SIZE)
     {
         setState(vm, S_ERR_OUT_OF_MEMORY);
         return;
@@ -57,7 +55,7 @@ void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
 
 State vm_run(VirtualMachine* vm) {
     vm->_registers[R_PC].word_ = 0; // set to start of rom
-    vm->_registers[R_BP].word_ = __ZLVM_ROM_SIZE;
+    vm->_registers[R_BP].word_ = ZLVM_ROM_SIZE;
     vm->_registers[R_SP].word_ = vm->_registers[R_BP].word_; // set to start of memory
     while (notError(vm) && !checkState(vm, S_HALTED))
     {
@@ -267,6 +265,8 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
 
         case JMPAL:
             vm->_registers[R_LP].word_ = vm->_registers[R_PC].word_;
+            vm->_registers[R_PC].word_ = imm;
+            break;
         case JMP:
             vm->_registers[R_PC].word_ = imm;
             break;
@@ -354,9 +354,9 @@ bool checkCondition(VirtualMachine* vm, Condition condition) {
 }
 
 byte readByte(VirtualMachine* this, size_t address) {
-    if (address >= __ZLVM_ROM_SIZE)
+    if (address >= ZLVM_ROM_SIZE)
     {
-        address -= __ZLVM_ROM_SIZE;
+        address -= ZLVM_ROM_SIZE;
 
         if (address >= this->_memorySize)
         {
@@ -369,9 +369,9 @@ byte readByte(VirtualMachine* this, size_t address) {
 }
 
 void writeByte(VirtualMachine* this, size_t address, byte value) {
-    if (address >= __ZLVM_ROM_SIZE)
+    if (address >= ZLVM_ROM_SIZE)
     {
-        address -= __ZLVM_ROM_SIZE;
+        address -= ZLVM_ROM_SIZE;
         if (address >= this->_memorySize)
         {
             setState(this, S_ERR_OUT_OF_MEMORY);
@@ -437,23 +437,23 @@ void writeDword(VirtualMachine* this, size_t address, dword value) {
 }
 
 word popWord(VirtualMachine* this) {
-    if ((this->_registers[R_SP].word_ - __ZLVM_WORD_SIZE) < this->_registers[R_BP].word_)
+    if ((this->_registers[R_SP].word_ - ZLVM_WORD_SIZE) < this->_registers[R_BP].word_)
     {
         setState(this, S_ERR_STACK_UNDERFLOW);
         return 0;
     }
     word res = readWord(this, this->_registers[R_SP].word_);
-    this->_registers[R_SP].word_ -= __ZLVM_WORD_SIZE;
+    this->_registers[R_SP].word_ -= ZLVM_WORD_SIZE;
     return res;
 }
 
 void pushWord(VirtualMachine* this, word value) {
-    if (this->_registers[R_SP].word_ + __ZLVM_WORD_SIZE - this->_registers[R_BP].word_ >= __ZLVM_STACK_SIZE)
+    if (this->_registers[R_SP].word_ + ZLVM_WORD_SIZE - this->_registers[R_BP].word_ >= ZLVM_STACK_SIZE)
     {
         setState(this, S_ERR_STACK_OVERFLOW);
         return;
     }
-    this->_registers[R_SP].word_ += __ZLVM_WORD_SIZE;
+    this->_registers[R_SP].word_ += ZLVM_WORD_SIZE;
     writeWord(this, this->_registers[R_SP].word_, value);
 }
 
@@ -495,13 +495,13 @@ void interrupt(VirtualMachine* vm, word code) {
     switch (code)
     {
         case 0x01:
-            __sputc(vm->_registers[R_A0].byte_ + 0x60, stdout);
+            fputc(vm->_registers[R_A0].byte_ + 0x60, stdout);
             break;
         case 0x02:
-            __sputc(vm->_registers[R_A0].byte_, stdout);
+            fputc(vm->_registers[R_A0].byte_, stdout);
             break;
         case 0x10:
-            vm->_registers[R_V0].word_ = (word) __sgetc(stdin);
+            vm->_registers[R_V0].word_ = (word) fgetc(stdin);
             break;
         case 0xFF:
             setState(vm, S_HALTED);
