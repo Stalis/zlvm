@@ -1,31 +1,38 @@
-cmake_minimum_required(VERSION 4.4.2)
-project(zlasm C)
+file(GLOB ZLASM_PUBLIC_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/../include/asm/*.h")
+file(GLOB ZLASM_PRIVATE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.h")
+file(GLOB ZLASM_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS On)
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
-
-set(CMAKE_C_STANDARD 11)
-
-file(GLOB EXPORT_H ${CMAKE_CURRENT_LIST_DIR}/../include/asm/*.h)
-file(GLOB HEADERS ${EXPORT_H} src/*.h)
-file(GLOB SOURCES src/*.c)
-
-add_library(asmobjlib OBJECT ${HEADERS} ${SOURCES})
-set_property(TARGET asmobjlib PROPERTY POSITION_INDEPENDENT_CODE 1)
+add_library(asmobjlib OBJECT ${ZLASM_PUBLIC_HEADERS} ${ZLASM_PRIVATE_HEADERS} ${ZLASM_SOURCES})
+set_target_properties(asmobjlib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(
+    asmobjlib
+    PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include" "${CMAKE_CURRENT_LIST_DIR}/../include/asm"
+)
+zlvm_configure_target(asmobjlib)
 
 add_library(zlasm SHARED $<TARGET_OBJECTS:asmobjlib>)
 add_library(zlasm-static STATIC $<TARGET_OBJECTS:asmobjlib>)
-target_link_libraries(zlasm zlasm-static zlvm)
-set_target_properties(zlasm zlasm-static
-        PROPERTIES PUBLIC_HEADER "${EXPORT_H}")
+
+set_target_properties(
+    zlasm zlasm-static
+    PROPERTIES PUBLIC_HEADER "${ZLASM_PUBLIC_HEADERS}"
+)
+
+target_include_directories(
+    zlasm
+    PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include" "${CMAKE_CURRENT_LIST_DIR}/../include/asm"
+)
+target_include_directories(
+    zlasm-static
+    PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include" "${CMAKE_CURRENT_LIST_DIR}/../include/asm"
+)
+target_link_libraries(zlasm PRIVATE zlasm-static zlvm)
 
 add_executable(zlasm-bin main.c)
-target_link_libraries(zlasm-bin zlasm)
-
-target_include_directories(asmobjlib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
-target_include_directories(zlasm PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
-target_include_directories(zlasm-static PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
-target_include_directories(zlasm-bin PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include ${CMAKE_CURRENT_LIST_DIR}/../include/asm)
-
-set_target_properties(zlasm-bin zlasm-static
-        PROPERTIES OUTPUT_NAME zlasm)
+set_target_properties(zlasm-bin zlasm-static PROPERTIES OUTPUT_NAME zlasm)
+target_include_directories(
+    zlasm-bin
+    PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../include" "${CMAKE_CURRENT_LIST_DIR}/../include/asm"
+)
+target_link_libraries(zlasm-bin PRIVATE zlasm)
+zlvm_configure_target(zlasm-bin)

@@ -9,10 +9,25 @@
 
 typedef enum Operation {
     OP_NOOP = 0,
-    OP_ID, OP_ADD, OP_SUB, OP_MUL, OP_DIV,
-    OP_MOD, OP_NOT, OP_AND, OP_OR, OP_XOR,
-    OP_NAND, OP_NOR, OP_INC, OP_DEC, OP_SADD,
-    OP_SSUB, OP_SMUL, OP_SDIV, OP_SMOD,
+    OP_ID,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    OP_MOD,
+    OP_NOT,
+    OP_AND,
+    OP_OR,
+    OP_XOR,
+    OP_NAND,
+    OP_NOR,
+    OP_INC,
+    OP_DEC,
+    OP_SADD,
+    OP_SSUB,
+    OP_SMUL,
+    OP_SDIV,
+    OP_SMOD,
     OP_TOTAL,
 } Operation;
 
@@ -39,8 +54,8 @@ typedef struct ALU {
     ALUFlags flags_;
 } ALU;
 
-void alu_setFlags(ALU*);
-void alu_compute(ALU*);
-void alu_reset(ALU*);
+void alu_setFlags(ALU *alu);
+void alu_compute(ALU *alu);
+void alu_reset(ALU *alu);
 
-#endif //ZLVM_C_ALU_H
+#endif // ZLVM_C_ALU_H

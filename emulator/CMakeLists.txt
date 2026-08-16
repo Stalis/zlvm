@@ -1,32 +1,26 @@
-cmake_minimum_required(VERSION 4.4.2)
-project(zlvm C)
+file(GLOB ZLVM_PUBLIC_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/../include/*.h")
+file(GLOB ZLVM_PRIVATE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.h")
+file(GLOB ZLVM_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
-
-set(CMAKE_C_STANDARD 11)
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-
-file(GLOB EXPORT_H ${CMAKE_CURRENT_LIST_DIR}/../include/*.h)
-file(GLOB HEADERS ${EXPORT_H} src/*.h)
-file(GLOB SOURCES src/*.c)
-
-add_library(vmobjlib OBJECT ${HEADERS} ${SOURCES})
-set_property(TARGET vmobjlib PROPERTY POSITION_INDEPENDENT_CODE 1)
+add_library(vmobjlib OBJECT ${ZLVM_PUBLIC_HEADERS} ${ZLVM_PRIVATE_HEADERS} ${ZLVM_SOURCES})
+set_target_properties(vmobjlib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(vmobjlib PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include")
+zlvm_configure_target(vmobjlib)
 
 add_library(zlvm SHARED $<TARGET_OBJECTS:vmobjlib>)
 add_library(zlvm-static STATIC $<TARGET_OBJECTS:vmobjlib>)
-set_target_properties(zlvm zlvm-static
-        PROPERTIES PUBLIC_HEADER "${EXPORT_H}")
-target_link_libraries(zlvm zlvm-static)
+
+set_target_properties(
+    zlvm zlvm-static
+    PROPERTIES PUBLIC_HEADER "${ZLVM_PUBLIC_HEADERS}"
+)
+
+target_include_directories(zlvm PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include")
+target_include_directories(zlvm-static PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include")
+target_link_libraries(zlvm PRIVATE zlvm-static)
 
 add_executable(zlvm-bin main.c)
-target_link_libraries(zlvm-bin zlvm zlasm)
-
-target_include_directories(vmobjlib PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include)
-target_include_directories(zlvm PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include)
-target_include_directories(zlvm-static PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include)
-target_include_directories(zlvm-bin PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../include)
-
-set_target_properties(zlvm-bin zlvm-static
-        PROPERTIES OUTPUT_NAME zlvm)
+set_target_properties(zlvm-bin zlvm-static PROPERTIES OUTPUT_NAME zlvm)
+target_include_directories(zlvm-bin PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../include")
+target_link_libraries(zlvm-bin PRIVATE zlvm zlasm)
+zlvm_configure_target(zlvm-bin)

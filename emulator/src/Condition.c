@@ -1,8 +1,7 @@
-#include "../../include/Condition.h"
+#include "Condition.h"
 
-const char* condition_to_string(Condition c) {
-    switch (c)
-    {
+const char *condition_to_string(Condition condition) {
+    switch (condition) {
         case C_UNCONDITIONAL:
             return "un";
         case C_ZERO_SET:

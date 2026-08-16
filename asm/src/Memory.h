@@ -1,50 +1,48 @@
-//
-// Created by Stanislav on 2019-06-03.
-//
-
-#ifndef ZLVM_C_MEMORY_H
-#define ZLVM_C_MEMORY_H
-
-#include <assert.h>
-#include <string.h>
+#ifndef ZLVM_ASM_MEMORY_H
+#define ZLVM_ASM_MEMORY_H
 
 #include "Error.h"
 
-static inline void* malloc_s(size_t __size) {
-    void* buf = malloc(__size);
-    if (buf == NULL) ZLASM__CRASH("Allocation error");
-    return buf;
+#include <stdlib.h>
+#include <string.h>
+
+static inline void *asm_malloc(size_t size) {
+    void *result = malloc(size == 0 ? 1 : size);
+    if (result == NULL) {
+        ZLASM_CRASH("Allocation error");
+    }
+    return result;
 }
 
-static inline void* calloc_s(size_t __count, size_t __size) {
-    void* buf = calloc(__count, __size);
-    if (buf == NULL) ZLASM__CRASH("Allocation error");
-    return buf;
+static inline void *asm_calloc(size_t count, size_t size) {
+    void *result = calloc(count == 0 ? 1 : count, size == 0 ? 1 : size);
+    if (result == NULL) {
+        ZLASM_CRASH("Allocation error");
+    }
+    return result;
 }
 
-static inline void* realloc_s(void* __ptr, size_t __size) {
-    assert(__ptr != NULL);
-    void* buf = realloc(__ptr, __size);
-    if (buf == NULL) ZLASM__CRASH("Reallocation error");
-    return buf;
+static inline void *asm_realloc(void *pointer, size_t size) {
+    void *result = realloc(pointer, size == 0 ? 1 : size);
+    if (result == NULL) {
+        ZLASM_CRASH("Reallocation error");
+    }
+    return result;
 }
 
-static inline char* strdup_s(const char* __s) {
-    assert(__s != NULL);
-    char* buf = strdup(__s);
-    if (buf == NULL) ZLASM__CRASH("String duplication error");
-    return buf;
+static inline char *asm_strdup(const char *string) {
+    if (string == NULL) {
+        ZLASM_CRASH("Cannot duplicate a null string");
+    }
+
+    size_t size = strlen(string) + 1;
+    char *result = asm_malloc(size);
+    memcpy(result, string, size);
+    return result;
 }
 
-static inline void free_s(void* __ptr) {
-    assert(__ptr != NULL);
-    free(__ptr);
+static inline void asm_free(void *pointer) {
+    free(pointer);
 }
 
-#define malloc(__size) malloc_s(__size)
-#define calloc(__count, __size) calloc_s(__count, __size)
-#define realloc(__ptr, __size) realloc_s(__ptr, __size)
-#define strdup(__s) strdup_s(__s)
-#define free(__ptr) free_s(__ptr); __ptr = NULL
-
-#endif //ZLVM_C_MEMORY_H
+#endif // ZLVM_ASM_MEMORY_H

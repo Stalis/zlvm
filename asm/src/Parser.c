@@ -1,192 +1,151 @@
-// Created by Stanislav on 2019-05-14.
-//
-
-#include <stdlib.h>
 #include "Parser.h"
+
 #include "Memory.h"
 
-void parser_init(struct ParserContext* ctx) {
-    ctx->lines = malloc(sizeof(struct LineList*));
-    line_list_init(ctx->lines);
-
-    ctx->lines_count = 0;
+static Token *read_token(TokenStream *stream) {
+    if (tokenStream_isEof(stream)) {
+        return NULL;
+    }
+    return tokenStream_read(stream);
 }
 
-static struct TokenStream* parser_getLine(struct TokenStream* stream) {
-#define NEXT_TOKEN ({                   \
-    if (tokenStream_isEof(stream)) {    \
-        goto __eof;                     \
-    }                                   \
-    cur = tokenStream_read(stream);     \
-})
-    struct TokenList* first = malloc(sizeof(struct TokenList));
-    struct TokenList* last = NULL;
-    struct Token* cur;
-    NEXT_TOKEN;
+static void append_token(TokenList **first, TokenList **last, Token *token) {
+    TokenList *item = asm_calloc(1, sizeof *item);
+    item->value = token;
 
-    while (cur->type == TOK_COMMENT || cur->type == TOK_NEWLINE)
-    {
-        NEXT_TOKEN;
+    if (*first == NULL) {
+        *first = item;
+    } else {
+        (*last)->next = item;
+    }
+    *last = item;
+}
+
+void parser_init(ParserContext *context) {
+    context->lines = asm_calloc(1, sizeof *context->lines);
+    line_list_init(context->lines);
+    context->lines_count = 0;
+}
+
+static TokenStream *parser_get_line(TokenStream *stream) {
+    Token *current = read_token(stream);
+    while (current != NULL && (current->type == TOK_COMMENT || current->type == TOK_NEWLINE)) {
+        current = read_token(stream);
     }
 
-    first->value = cur;
-    last = first;
-    NEXT_TOKEN;
-
-    if (first->value->type == TOK_LABEL_INIT && cur->type == TOK_NEWLINE)
-    {
-        NEXT_TOKEN;
+    if (current == NULL) {
+        return NULL;
     }
 
-    while (cur->type != TOK_NEWLINE)
-    {
-        if (cur->type == TOK_COMMA)
-        {
-            NEXT_TOKEN;
-            continue;
-        }
+    TokenList *first = NULL;
+    TokenList *last = NULL;
+    append_token(&first, &last, current);
+    current = read_token(stream);
 
-        if (cur->type == TOK_COMMENT)
-        {
+    if (first->value->type == TOK_LABEL_INIT && current != NULL && current->type == TOK_NEWLINE) {
+        current = read_token(stream);
+    }
+
+    while (current != NULL && current->type != TOK_NEWLINE) {
+        if (current->type == TOK_COMMENT) {
             break;
         }
-
-        last->next = malloc(sizeof(struct TokenList));
-        last->next->value = cur;
-        last = last->next;
-        NEXT_TOKEN;
+        if (current->type != TOK_COMMA) {
+            append_token(&first, &last, current);
+        }
+        current = read_token(stream);
     }
 
-__eof:
-    if (last == NULL)
-        return NULL;
-    else
-        return tokenStream_new(first);
-#undef NEXT_TOKEN
+    return tokenStream_new(first);
 }
 
-static struct Statement* parser_readStatement(struct TokenStream* stream, struct Token* cur) {
-#define NEXT_TOKEN ({                   \
-    if (tokenStream_isEof(stream)) {    \
-        goto __eof;                     \
-    }                                   \
-    cur = tokenStream_read(stream);     \
-})
+static Statement *parser_read_statement(TokenStream *stream, Token *current) {
+    Statement *statement = asm_malloc(sizeof *statement);
+    statement_init(statement);
+    statement->opcode = current;
 
-    struct Statement* stmt = malloc(sizeof(struct Statement));
-    statement_init(stmt);
-    stmt->opcode = cur;
-    NEXT_TOKEN;
-    if (cur->type == TOK_ID)
-    {
-        stmt->cond = cur;
-        NEXT_TOKEN;
+    current = read_token(stream);
+    if (current != NULL && current->type == TOK_ID) {
+        statement->cond = current;
+        current = read_token(stream);
     }
-    if (cur->type == TOK_REGISTER)
-    {
-        stmt->reg1 = cur;
-        NEXT_TOKEN;
-        if (cur->type == TOK_REGISTER)
-        {
-            stmt->reg2 = cur;
-            NEXT_TOKEN;
+
+    if (current != NULL && current->type == TOK_REGISTER) {
+        statement->reg1 = current;
+        current = read_token(stream);
+        if (current != NULL && current->type == TOK_REGISTER) {
+            statement->reg2 = current;
+            current = read_token(stream);
         }
     }
-    if (
-            cur->type == TOK_LABEL_USE ||
-            cur->type == TOK_CHAR_LITERAL ||
-            cur->type == TOK_INT_BIN ||
-            cur->type == TOK_INT_OCT ||
-            cur->type == TOK_INT_DEC ||
-            cur->type == TOK_INT_HEX
-            )
-    {
-        stmt->imm = cur;
+
+    if (current != NULL && (current->type == TOK_LABEL_USE || current->type == TOK_CHAR_LITERAL ||
+                            current->type == TOK_INT_BIN || current->type == TOK_INT_OCT ||
+                            current->type == TOK_INT_DEC || current->type == TOK_INT_HEX)) {
+        statement->imm = current;
     }
 
-__eof:
-    return stmt;
-#undef NEXT_TOKEN
+    return statement;
 }
 
-static struct Directive* parser_readDirective(struct TokenStream* stream, struct Token* cur) {
-#define NEXT_TOKEN ({                   \
-    if (tokenStream_isEof(stream)) {    \
-        goto __eof;                     \
-    }                                   \
-    cur = tokenStream_read(stream);     \
-})
-
-    struct Directive* dir = malloc(sizeof(struct Directive));
-
-    directive_init(dir, cur);
-    NEXT_TOKEN;
-    while (1)
-    {
-        directive_add_arg(dir, cur);
-        NEXT_TOKEN;
+static Directive *parser_read_directive(TokenStream *stream, Token *current) {
+    Directive *directive = asm_malloc(sizeof *directive);
+    if (!directive_init(directive, current)) {
+        ZLASM_TOKEN_CRASH("Unknown directive", current);
     }
 
-__eof:
-    return dir;
-
-#undef NEXT_TOKEN
+    for (current = read_token(stream); current != NULL; current = read_token(stream)) {
+        directive_add_arg(directive, current);
+    }
+    return directive;
 }
 
-static struct Line* parser_readLine(struct TokenStream* stream) {
-#define NEXT_TOKEN ({                   \
-    if (tokenStream_isEof(stream)) {    \
-        goto __eof;                     \
-    }                                   \
-    cur = tokenStream_read(stream);     \
-})
+static Line *parser_read_line(TokenStream *stream) {
+    Line *line = asm_calloc(1, sizeof *line);
+    Token *current = read_token(stream);
 
-    struct Line* line = calloc(1, sizeof(struct Line));
-    struct Token* cur;
-
-    NEXT_TOKEN;
-
-    if (cur->type == TOK_LABEL_INIT)
-    {
-        line->label = cur->value;
-        NEXT_TOKEN;
+    if (current != NULL && current->type == TOK_LABEL_INIT) {
+        line->label = current->value;
+        current = read_token(stream);
     }
 
-    switch (cur->type)
-    {
+    if (current == NULL) {
+        ZLASM_CRASH("Label is not followed by a statement or directive");
+    }
+
+    switch (current->type) {
         case TOK_ID:
             line->type = L_STMT;
-            line->stmt = parser_readStatement(stream, cur);
+            line->stmt = parser_read_statement(stream, current);
             break;
         case TOK_DIRECTIVE:
             line->type = L_DIR;
-            line->dir = parser_readDirective(stream, cur);
+            line->dir = parser_read_directive(stream, current);
             break;
         default:
-            ZLASM__TOKEN_CRASH("Unexpected token", cur);
+            ZLASM_TOKEN_CRASH("Unexpected token", current);
     }
 
-__eof:
     return line;
-#undef NEXT_TOKEN
 }
 
-void parser_addLine(ParserContext* ctx, Line* line) {
-    line_list_add(ctx->lines, line);
+void parser_addLine(ParserContext *context, Line *line) {
+    line_list_add(context->lines, line);
+    context->lines_count++;
 }
 
-void parser_parse(ParserContext* ctx, TokenStream* stream) {
-    struct TokenStream* tok_line = parser_getLine(stream);
-    struct Line* line;
-
-    while (tok_line != NULL)
-    {
-        line = parser_readLine(tok_line);
-        parser_addLine(ctx, line);
-        tok_line = parser_getLine(stream);
+void parser_parse(ParserContext *context, TokenStream *stream) {
+    TokenStream *line_stream = parser_get_line(stream);
+    while (line_stream != NULL) {
+        parser_addLine(context, parser_read_line(line_stream));
+        asm_free(line_stream);
+        line_stream = parser_get_line(stream);
     }
+    asm_free(stream);
 }
 
-void parser_clear(ParserContext* c) {
-    line_list_free(c->lines);
+void parser_clear(ParserContext *context) {
+    line_list_free(context->lines);
+    context->lines = NULL;
+    context->lines_count = 0;
 }
