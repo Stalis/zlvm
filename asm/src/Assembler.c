@@ -1,123 +1,112 @@
 // Created by Stanislav on 2019-06-01.
 //
 
-#include <ctype.h>
-#include <assert.h>
-
-#include "Memory.h"
-#include "Instruction.h"
-#include "Registers.h"
-#include "zlvm.h"
 #include "Assembler.h"
 
-inline static void line_to_upper(char* line) {
-    char* p = line;
-    for (; *p; ++p) *p = (char) toupper(*p);
+#include "Instruction.h"
+#include "Memory.h"
+#include "Registers.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static void line_to_upper(char* line) {
+    for (char* character = line; *character != '\0'; character++) {
+        *character = (char)toupper((unsigned char)*character);
+    }
 }
 
-inline static Condition parseCondition(const char*);
-inline static Register parseRegister(const char*);
+static Condition parse_condition(const char* string);
+static Register parse_register(const char* string);
 
-void asm_init(AssemblerContext* ctx) {
-    ctx->entry = NULL;
-    ctx->externals = NULL;
-    ctx->externalsCount = 0;
-    ctx->globals = NULL;
-    ctx->globalsCount = 0;
-    ctx->labels = NULL;
-    ctx->lines = NULL;
+void asm_init(AssemblerContext* context) {
+    context->entry = NULL;
+    context->externals = NULL;
+    context->externalsCount = 0;
+    context->globals = NULL;
+    context->globalsCount = 0;
+    context->labels = NULL;
+    context->lines = NULL;
 }
 
-static const char* CONTEXT_DELIMITER = ".";
+static const char* const ASM_CONTEXT_DELIMITER = ".";
 
-static const char* set_label_context(const char* ctx, const char* label);
+static const char* set_label_context(const char* context, const char* label);
 
-void asm_processDirectives(AssemblerContext* ctx, ParserContext* parser) {
+void asm_processDirectives(AssemblerContext* context, ParserContext* parser) {
     LineList* last = NULL;
     LineStream* stream = lineStream_new(parser->lines);
+    parser->lines = NULL;
+    parser->lines_count = 0;
     Line* line = lineStream_read(stream);
-    char* proc_context = NULL;
+    const char* procedure_context = NULL;
 
-#define REMOVE_LINE                 \
-({                                  \
-    void* __buf__ = line;           \
-    line = NULL;                    \
-    free(__buf__);                  \
-})
-// REMOVE_LINE
-
-    while (line != NULL)
-    {
-        if (proc_context != NULL && line->label != NULL)
-        {
-            const char* buf = line->label;
-            line->label = (char*) set_label_context(proc_context, buf);
+    while (line != NULL) {
+        if (procedure_context != NULL && line->label != NULL) {
+            line->label = (char*)set_label_context(procedure_context, line->label);
         }
-        if (line->type == L_DIR)
-        {
-            if (is_data_directive(line->dir->type))
-            {
+        if (line->type == L_DIR) {
+            if (is_data_directive(line->dir->type)) {
                 Directive* dir = line->dir;
                 line->type = L_RAW;
-                line->raw = calloc(1, sizeof(struct RawData));
+                line->raw = asm_calloc(1, sizeof(struct RawData));
                 line->raw->data = directive_get_raw_data(dir, &line->raw->size);
+                directive_free(dir);
                 continue;
             }
-            switch (line->dir->type)
-            {
+            switch (line->dir->type) {
                 case DIR_SECTION:
-                    // TODO: Add sections
+                    // TODO(assembler): implement sections.
                     break;
                 case DIR_GLOBAL:
-                    asm_addGlobal(ctx, strdup(line->dir->argv[0]->value));
+                    asm_addGlobal(context, asm_strdup(line->dir->argv[0]->value));
                     break;
                 case DIR_EXTERN:
-                    asm_addExternal(ctx, strdup(line->dir->argv[0]->value));
+                    asm_addExternal(context, asm_strdup(line->dir->argv[0]->value));
                     break;
                 case DIR_ALIGN:
-                    // TODO: Add aligning data
+                    // TODO(assembler): implement data alignment.
                     break;
                 case DIR_ENTRY:
-                    ctx->entry = strdup(line->dir->argv[0]->value);
+                    context->entry = asm_strdup(line->dir->argv[0]->value);
                     break;
                 case DIR_LOCATE:
-                    // TODO: Add static location shift
+                    // TODO(assembler): implement static location changes.
                     break;
                 case DIR_PROC:
+                    if (stream->first == NULL || stream->first->value == NULL) {
+                        ZLASM_CRASH(".proc must be followed by a procedure body");
+                    }
                     stream->first->value->label = "";
-                    proc_context = line->dir->argv[0]->value;
+                    procedure_context = line->dir->argv[0]->value;
                     break;
                 case DIR_ENDPROC:
-                    proc_context = NULL;
+                    procedure_context = NULL;
                     break;
                 case DIR_MACRO:
-                    // TODO: Add macroses
+                    // TODO(assembler): implement macros.
                     break;
                 case DIR_ENDMACRO:
                     break;
                 default:
-                    ZLASM__CRASH("Invalid directive");
+                    ZLASM_CRASH("Invalid directive");
             }
 
-            void* __buf__ = line;
+            directive_free(line->dir);
+            asm_free(line);
             line = NULL;
-            free(__buf__);
         }
 
-        if (line != NULL)
-        {
-
-            if (ctx->lines == NULL)
-            {
-                ctx->lines = calloc(1, sizeof(LineList));
+        if (line != NULL) {
+            if (context->lines == NULL) {
+                context->lines = asm_calloc(1, sizeof(LineList));
             }
-            if (last == NULL)
-            {
-                last = ctx->lines;
-            }
-            else
-            {
-                last->next = calloc(1, sizeof(LineList));
+            if (last == NULL) {
+                last = context->lines;
+            } else {
+                last->next = asm_calloc(1, sizeof(LineList));
                 last = last->next;
             }
             last->value = line;
@@ -125,177 +114,133 @@ void asm_processDirectives(AssemblerContext* ctx, ParserContext* parser) {
 
         line = lineStream_read(stream);
     }
-#undef REMOVE_LINE
+    asm_free(stream);
 }
 
-void asm_addGlobal(AssemblerContext* ctx, const char* sym) {
-    if (ctx->globals == NULL)
-    {
-        ctx->globals = malloc(sizeof(const char*));
+void asm_addGlobal(AssemblerContext* context, const char* symbol) {
+    if (context->globals == NULL) {
+        context->globals = asm_malloc(sizeof(const char*));
+    } else {
+        context->globals =
+            asm_realloc(context->globals, sizeof(const char*) * (context->globalsCount + 1));
     }
-    else
-    {
-        ctx->globals = realloc(ctx->globals, sizeof(const char*) * (ctx->globalsCount + 1));
-    }
-    ctx->globals[ctx->globalsCount++] = sym;
+    context->globals[context->globalsCount++] = symbol;
 }
 
-void asm_addExternal(AssemblerContext* ctx, const char* sym) {
-    if (ctx->externals == NULL)
-    {
-        ctx->externals = malloc(sizeof(const char*));
+void asm_addExternal(AssemblerContext* context, const char* symbol) {
+    if (context->externals == NULL) {
+        context->externals = asm_malloc(sizeof(const char*));
+    } else {
+        context->externals =
+            asm_realloc(context->externals, sizeof(const char*) * (context->externalsCount + 1));
     }
-    else
-    {
-        ctx->externals = realloc(ctx->externals, sizeof(const char*) * (ctx->externalsCount + 1));
-    }
-    ctx->externals[ctx->externalsCount++] = sym;
+    context->externals[context->externalsCount++] = symbol;
 }
 
-void asm_processLabels(AssemblerContext* ctx) {
-    LineList* last = ctx->lines;
-    ctx->labels = calloc(1, sizeof(LabelTable));
-    size_t addr = 0;
+void asm_processLabels(AssemblerContext* context) {
+    LineList* last = context->lines;
+    context->labels = asm_calloc(1, sizeof(LabelTable));
+    size_t address = 0;
 
-    while (last != NULL)
-    {
-        if (last->value->label != NULL)
-        {
-            labelTable_setOrCreate(ctx->labels, strdup(last->value->label), addr);
-#ifdef DEBUG
-//            printf("%s: 0x%lX\n", last->value->label, addr);
-#endif
+    while (last != NULL) {
+        if (last->value->label != NULL) {
+            labelTable_setOrCreate(context->labels, asm_strdup(last->value->label), address);
         }
-        if (last->value->type == L_STMT)
-        {
-            addr += sizeof(Instruction);
-        }
-        else if (last->value->type == L_RAW)
-        {
-            addr += last->value->raw->size;
+        if (last->value->type == L_STMT) {
+            address += sizeof(Instruction);
+        } else if (last->value->type == L_RAW) {
+            address += last->value->raw->size;
         }
         last = last->next;
     }
 }
 
-byte* asm_translate(AssemblerContext* ctx, size_t* __size) {
-    LineList* cur = ctx->lines;
-    const size_t bufferStep = 1024;
-    size_t bufferSize = bufferStep;
-    byte* result = calloc(bufferSize, sizeof(byte));
-    byte* ptr = result;
-    size_t length = 0;
-    byte* buf;
+byte* asm_translate(AssemblerContext* context, size_t* output_size) {
+    const size_t growth_size = 1024;
+    size_t capacity = growth_size;
+    size_t offset = 0;
+    byte* result = asm_calloc(capacity, sizeof *result);
 
-    while (cur != NULL)
-    {
-        if (cur->value->type == L_STMT)
-        {
-            Statement* stmt = cur->value->stmt;
-            line_to_upper(stmt->opcode->value);
-            Instruction instr;
+    for (LineList* current = context->lines; current != NULL; current = current->next) {
+        const byte* data = NULL;
+        size_t data_size = 0;
+        Instruction instruction = {0};
 
-            instr.opcode_ = string_to_opcode(stmt->opcode->value);
+        if (current->value->type == L_STMT) {
+            Statement* statement = current->value->stmt;
+            line_to_upper(statement->opcode->value);
+            instruction.opcode_ = string_to_opcode(statement->opcode->value);
+            if (instruction.opcode_ == OPCODE_TOTAL) {
+                ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
+            }
 
-            if (stmt->cond != NULL)
-                instr.condition_ = parseCondition(stmt->cond->value);
-            else
-                instr.condition_ = C_UNCONDITIONAL;
+            instruction.condition_ =
+                statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond->value);
+            instruction.register1 =
+                statement->reg1 == NULL ? R_ZERO : parse_register(statement->reg1->value);
+            instruction.register2 =
+                statement->reg2 == NULL ? R_ZERO : parse_register(statement->reg2->value);
 
-            if (stmt->reg1 != NULL)
-                instr.register1 = parseRegister(stmt->reg1->value);
-            else
-                instr.register1 = R_ZERO;
-
-            if (stmt->reg2 != NULL)
-                instr.register2 = parseRegister(stmt->reg2->value);
-            else
-                instr.register2 = R_ZERO;
-
-            if (stmt->imm != NULL)
-            {
-                if (stmt->imm->type == TOK_LABEL_USE)
-                {
-                    LabelInfo* l = labelInfo_getIfExist(ctx->labels, stmt->imm->value);
-                    if (l != NULL)
-                    {
-                        instr.immediate = l->address;
+            if (statement->imm != NULL) {
+                if (statement->imm->type == TOK_LABEL_USE) {
+                    LabelInfo* label = labelInfo_getIfExist(context->labels, statement->imm->value);
+                    if (label == NULL) {
+                        ZLASM_TOKEN_CRASH("Unknown label", statement->imm);
                     }
-                    else
-                    {
-                        ZLASM__TOKEN_CRASH("Unknown label", stmt->imm);
-                    }
-                }
-                else
-                {
-                    switch (stmt->imm->type)
-                    {
-                        case TOK_CHAR_LITERAL:
-                            instr.immediate = token_get_char_value(stmt->imm->value);
-                            break;
-                        case TOK_INT_HEX:
-                        case TOK_INT_DEC:
-                        case TOK_INT_OCT:
-                        case TOK_INT_BIN:
-                            instr.immediate = token_get_int_value(stmt->imm);
-                            break;
-                        default:
-                            ZLASM__TOKEN_CRASH("Invalid immediate value", stmt->imm);
-                    }
+                    instruction.immediate = (word)label->address;
+                } else if (statement->imm->type == TOK_CHAR_LITERAL) {
+                    instruction.immediate = token_get_char_value(statement->imm->value);
+                } else {
+                    instruction.immediate = (word)token_get_int_value(statement->imm);
                 }
             }
-            else
-                instr.immediate = 0;
 
-            length = sizeof(Instruction);
-            buf = (byte*) &instr;
-#ifdef DEBUG
-//            instruction_print(&instr);
-#endif
-        }
-        else if (cur->value->type == L_RAW)
-        {
-            length = cur->value->raw->size;
-            buf = cur->value->raw->data;
-        }
-        else
-        {
-            ZLASM__CRASH("Assembler error: invalid line type");
+            data = (const byte*)&instruction;
+            data_size = sizeof instruction;
+        } else if (current->value->type == L_RAW) {
+            data = current->value->raw->data;
+            data_size = current->value->raw->size;
+        } else {
+            ZLASM_CRASH("Assembler error: invalid line type");
         }
 
-        while ((size_t) labs((ptr + length) - result) >= bufferSize)
-        {
-            bufferSize += bufferStep;
-            result = realloc(result, bufferSize);
+        if (data_size > SIZE_MAX - offset) {
+            ZLASM_CRASH("Assembler output is too large");
+        }
+        size_t required_size = offset + data_size;
+        if (required_size > capacity) {
+            while (required_size > capacity) {
+                if (capacity > SIZE_MAX - growth_size) {
+                    ZLASM_CRASH("Assembler output is too large");
+                }
+                capacity += growth_size;
+            }
+            result = asm_realloc(result, capacity);
         }
 
-        memcpy(ptr, buf, length);
-        ptr += length;
-        length = 0;
-        cur = cur->next;
+        memcpy(result + offset, data, data_size);
+        offset = required_size;
     }
 
-    *__size = (size_t) labs(ptr - result);
+    *output_size = offset;
     return result;
 }
 
-static const char* set_label_context(const char* ctx, const char* label) {
-    if (strlen(label) == 0)
-    {
-        return strdup(ctx);
+static const char* set_label_context(const char* context, const char* label) {
+    if (strlen(label) == 0) {
+        return asm_strdup(context);
     }
-    char* buf = calloc(256, sizeof(char));
-    sprintf(buf, "%s%s%s", ctx, CONTEXT_DELIMITER, label);
-    buf = realloc(buf, strlen(buf));
-
-    return buf;
+    size_t size = strlen(context) + strlen(ASM_CONTEXT_DELIMITER) + strlen(label) + 1;
+    char* result = asm_malloc(size);
+    snprintf(result, size, "%s%s%s", context, ASM_CONTEXT_DELIMITER, label);
+    return result;
 }
 
-inline static Condition parseCondition(const char* s) {
+static Condition parse_condition(const char* string) {
 
-#define CHECK(str, code) \
-    if (strcmp(s, str) == 0) { \
-        return code; \
+#define CHECK(str, code)                                                                           \
+    if (strcmp(string, str) == 0) {                                                                \
+        return code;                                                                               \
     }
 
     CHECK("un", C_UNCONDITIONAL);
@@ -326,25 +271,27 @@ inline static Condition parseCondition(const char* s) {
     CHECK("lt", C_LESS);
     CHECK("le", C_LESS_OR_EQUALS);
 
-    ZLASM__CRASH("Unknown condition");
+    ZLASM_CRASH("Unknown condition");
 #undef CHECK
 }
 
-inline static Register parseRegister(const char* s) {
-    if (NULL == s)
-    {
+static Register parse_register(const char* string) {
+    if (string == NULL) {
         return R_ZERO;
     }
 
-    if (s[0] == 'r')
-    {
-        char** end = NULL;
-        return (byte) strtoul(s + 1, end, 10);
+    if (string[0] == 'r') {
+        char* end = NULL;
+        unsigned long index = strtoul(string + 1, &end, 10);
+        if (*end != '\0' || index >= R_TOTAL) {
+            ZLASM_CRASH("Invalid numeric register");
+        }
+        return (Register)index;
     }
 
-#define CHECK(str, reg) \
-    if (strcmp(s, str) == 0) { \
-        return reg; \
+#define CHECK(str, reg)                                                                            \
+    if (strcmp(string, str) == 0) {                                                                \
+        return reg;                                                                                \
     }
 
     CHECK("zero", R_ZERO);
@@ -387,5 +334,5 @@ inline static Register parseRegister(const char* s) {
     CHECK("pc", R_PC);
 
 #undef CHECK
-    return R_ZERO;
+    ZLASM_CRASH("Unknown register");
 }

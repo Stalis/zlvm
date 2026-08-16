@@ -5,11 +5,11 @@
 #ifndef ZLVM_C_CONTEXT_H
 #define ZLVM_C_CONTEXT_H
 
-#include "LineList.h"
-#include "LabelTable.h"
-#include "Statement.h"
 #include "Directive.h"
+#include "LabelTable.h"
 #include "Lexer.h"
+#include "LineList.h"
+#include "Statement.h"
 #include "Token.h"
 
 typedef struct ParserContext {
@@ -25,4 +25,4 @@ void parser_parse(ParserContext*, TokenStream*);
 
 void parser_clear(ParserContext*);
 
-#endif //ZLVM_C_CONTEXT_H
+#endif // ZLVM_C_CONTEXT_H

@@ -8,9 +8,7 @@
 #include "Directive.h"
 #include "Statement.h"
 
-typedef enum LineType {
-    L_NONE, L_DIR, L_STMT, L_RAW
-} LineType;
+typedef enum LineType { L_NONE, L_DIR, L_STMT, L_RAW } LineType;
 
 typedef struct RawData {
     size_t size;
@@ -28,4 +26,4 @@ typedef struct Line {
     };
 } Line;
 
-#endif //ZLVM_C_LINE_H
+#endif // ZLVM_C_LINE_H

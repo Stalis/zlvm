@@ -7,11 +7,11 @@
 
 #include "ALU.h"
 #include "CPSR.h"
-#include "Value.h"
-#include "Registers.h"
-#include "Types.h"
 #include "Condition.h"
 #include "Instruction.h"
+#include "Registers.h"
+#include "Types.h"
+#include "Value.h"
 
 enum {
     ZLVM_ROM_SIZE = 4096,
@@ -35,6 +35,11 @@ typedef struct VirtualMachine {
 void vm_initialize(VirtualMachine* vm, size_t ram_size);
 
 /**
+ * @brief Release memory owned by a virtual machine instance.
+ */
+void vm_destroy(VirtualMachine* vm);
+
+/**
  * @brief Load dump to vm's memory
  * @param program pointer to byte array of dump
  * @param size size of dump
@@ -47,4 +52,4 @@ void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size);
  */
 State vm_run(VirtualMachine* vm);
 
-#endif //ZLVM_C_VIRTUALMACHINE_H
+#endif // ZLVM_C_VIRTUALMACHINE_H

@@ -18,11 +18,11 @@ typedef struct LineStream {
 } LineStream;
 
 void line_list_init(LineList*);
-void line_list_add(LineList* lst, Line* line);
+void line_list_add(LineList* list, Line* line);
 void line_list_free(LineList*);
 
-void line_print(Line*);
+void line_print(Line* line);
 
 LineStream* lineStream_new(LineList*);
 Line* lineStream_read(LineStream*);
-#endif //ZLVM_C_LINELIST_H
+#endif // ZLVM_C_LINELIST_H

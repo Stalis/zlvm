@@ -11,7 +11,7 @@ typedef union Value {
     byte byte_;
     hword hword_;
     word word_;
-//    dword dword_;
+    //    dword dword_;
 } Value;
 
-#endif //ZLVM_C_REGISTER_H
+#endif // ZLVM_C_REGISTER_H

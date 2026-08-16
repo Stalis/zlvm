@@ -3,35 +3,37 @@
 //
 
 #include "zlasm.h"
+
+#include "Memory.h"
+
+#include <Assembler.h>
 #include <Lexer.h>
 #include <Parser.h>
-#include <Assembler.h>
 
-byte* assemblySource(char* source, size_t* binarySize) {
-    byte* res;
+byte* assemblySource(char* source, size_t* binary_size) {
+    byte* result;
 
-    LexerState* lexer = malloc(sizeof(LexerState));
+    LexerState* lexer = asm_malloc(sizeof(LexerState));
     lexer_init(lexer, source);
 
-    Token* tok = lexer_readToken(lexer);
-    while (tok != NULL)
-    {
-        tok = lexer_readToken(lexer);
+    Token* token = lexer_readToken(lexer);
+    while (token != NULL) {
+        token = lexer_readToken(lexer);
     }
 
-    ParserContext* parser = malloc(sizeof(ParserContext));
+    ParserContext* parser = asm_malloc(sizeof(ParserContext));
     parser_init(parser);
     parser_parse(parser, tokenStream_new(lexer->_tokens));
-    free(lexer);
+    asm_free(lexer);
 
-    AssemblerContext* assembler = malloc(sizeof(AssemblerContext));
+    AssemblerContext* assembler = asm_malloc(sizeof(AssemblerContext));
     asm_init(assembler);
     asm_processDirectives(assembler, parser);
-    free(parser);
+    asm_free(parser);
     asm_processLabels(assembler);
-    res = asm_translate(assembler, binarySize);
+    result = asm_translate(assembler, binary_size);
 
-    free(assembler);
+    asm_free(assembler);
 
-    return res;
+    return result;
 }

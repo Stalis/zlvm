@@ -2,11 +2,13 @@
 // Created by Stanislav on 2019-06-06.
 //
 
-#include "../../include/Instruction.h"
+#include "Instruction.h"
+
 #include <stdio.h>
 
-void instruction_print(Instruction* i) {
-    const char* opcode = opcode_to_string(i->opcode_);
-    const char* cond = condition_to_string(i->condition_);
-    printf("%s %s %d, %d, 0x%X\n", opcode, cond, i->register1, i->register2, i->immediate);
+void instruction_print(Instruction* instruction) {
+    const char* opcode = opcode_to_string(instruction->opcode_);
+    const char* condition = condition_to_string(instruction->condition_);
+    printf("%s %s %d, %d, 0x%X\n", opcode, condition, instruction->register1,
+           instruction->register2, instruction->immediate);
 }

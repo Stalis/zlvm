@@ -1,78 +1,60 @@
-// Created by Stanislav on 2019-05-07.
-//
+#include "LabelTable.h"
+
+#include "Memory.h"
 
 #include <assert.h>
 #include <string.h>
-#include "LabelTable.h"
-#include "Memory.h"
 
-void labelTable_init(struct LabelTable* t) {
-    t->value = NULL;
-    t->next = NULL;
+void labelTable_init(LabelTable* table) {
+    table->value = NULL;
+    table->next = NULL;
 }
 
-struct LabelInfo* labelTable_add(struct LabelTable* t, const char* name) {
-    return labelTable_setOrCreate(t, name, 0);
+LabelInfo* labelTable_add(LabelTable* table, const char* name) {
+    return labelTable_setOrCreate(table, name, 0);
 }
 
-struct LabelInfo* labelTable_setOrCreate(struct LabelTable* t, const char* name, size_t addr) {
-    assert(t != NULL);
-    struct LabelInfo* l = calloc(1, sizeof(struct LabelInfo));
-    l->name = name;
-    l->labelLength = strlen(name);
-    l->address = addr;
+LabelInfo* labelTable_setOrCreate(LabelTable* table, const char* name, size_t address) {
+    assert(table != NULL);
+    assert(name != NULL);
 
-    struct LabelTable* last = t;
-
-    while (last->next != NULL)
-    {
-        if (strncmp(last->value->name, l->name, l->labelLength) == 0)
-        {
-            last->value->address = addr;
-            free(l);
-            return last->value;
+    for (LabelTable* item = table; item != NULL; item = item->next) {
+        if (item->value != NULL && strcmp(item->value->name, name) == 0) {
+            item->value->address = address;
+            return item->value;
         }
+    }
+
+    LabelTable* last = table;
+    while (last->next != NULL) {
+        last = last->next;
+    }
+    if (last->value != NULL) {
+        last->next = asm_calloc(1, sizeof *last->next);
         last = last->next;
     }
 
-    if (last->value != NULL)
-    {
-        last->next = calloc(1, sizeof(struct LabelTable));
-        last = last->next;
-    }
-
-    last->value = l;
-
-    return last->value;
+    LabelInfo* label = asm_calloc(1, sizeof *label);
+    label->name = name;
+    label->labelLength = strlen(name);
+    label->address = address;
+    last->value = label;
+    return label;
 }
 
-struct LabelInfo* labelInfo_getIfExist(struct LabelTable* t, const char* name) {
-    assert(t != NULL);
-    if (t->value == NULL) return NULL;
+LabelInfo* labelInfo_getIfExist(LabelTable* table, const char* name) {
+    assert(table != NULL);
+    assert(name != NULL);
 
-    size_t len = strlen(name);
-    while (1)
-    {
-        if (0 == strncmp(t->value->name, name, len))
-        {
-            return t->value;
-        }
-        if (t->next != NULL)
-        {
-            t = t->next;
-        }
-        else
-        {
-            return NULL;
+    for (LabelTable* item = table; item != NULL; item = item->next) {
+        if (item->value != NULL && strcmp(item->value->name, name) == 0) {
+            return item->value;
         }
     }
+    return NULL;
 }
 
-struct LabelInfo* labelInfo_getOrCreate(struct LabelTable* t, const char* name) {
-    struct LabelInfo* res = labelInfo_getIfExist(t, name);
-    if (res == NULL)
-    {
-        res = labelTable_add(t, name);
-    }
-    return res;
+LabelInfo* labelInfo_getOrCreate(LabelTable* table, const char* name) {
+    LabelInfo* label = labelInfo_getIfExist(table, name);
+    return label == NULL ? labelTable_add(table, name) : label;
 }

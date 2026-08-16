@@ -20,8 +20,8 @@ typedef struct LabelTable {
 
 void labelTable_init(LabelTable*);
 struct LabelInfo* labelTable_add(LabelTable*, const char* name);
-struct LabelInfo* labelTable_setOrCreate(LabelTable*, const char* name, size_t addr);
+struct LabelInfo* labelTable_setOrCreate(LabelTable* table, const char* name, size_t address);
 struct LabelInfo* labelInfo_getIfExist(LabelTable*, const char* name);
 struct LabelInfo* labelInfo_getOrCreate(LabelTable*, const char* name);
 
-#endif //ZLVM_C_LABELTABLE_H
+#endif // ZLVM_C_LABELTABLE_H

@@ -1,11 +1,10 @@
 // Created by Stanislav on 2019-04-26.
 //
 
-#include "../../include/ALU.h"
+#include "ALU.h"
 
 void alu_compute(ALU* alu) {
-    switch (alu->op_)
-    {
+    switch (alu->op_) {
         case OP_ID:
             alu->result_ = alu->left_;
             break;
@@ -50,23 +49,23 @@ void alu_compute(ALU* alu) {
             break;
         case OP_SADD:
             alu->flags_.S = true;
-            alu->result_ = (dword) ((sdword) alu->left_ + (sdword) alu->right_);
+            alu->result_ = (dword)((sdword)alu->left_ + (sdword)alu->right_);
             break;
         case OP_SSUB:
             alu->flags_.S = true;
-            alu->result_ = (dword) ((sdword) alu->left_ - (sdword) alu->right_);
+            alu->result_ = (dword)((sdword)alu->left_ - (sdword)alu->right_);
             break;
         case OP_SMUL:
             alu->flags_.S = true;
-            alu->result_ = (dword) ((sdword) alu->left_ * (sdword) alu->right_);
+            alu->result_ = (dword)((sdword)alu->left_ * (sdword)alu->right_);
             break;
         case OP_SDIV:
             alu->flags_.S = true;
-            alu->result_ = (dword) ((sdword) alu->left_ / (sdword) alu->right_);
+            alu->result_ = (dword)((sdword)alu->left_ / (sdword)alu->right_);
             break;
         case OP_SMOD:
             alu->flags_.S = true;
-            alu->result_ = (dword) ((sdword) alu->left_ % (sdword) alu->right_);
+            alu->result_ = (dword)((sdword)alu->left_ % (sdword)alu->right_);
             break;
         default:
             return;
@@ -75,52 +74,47 @@ void alu_compute(ALU* alu) {
     alu_setFlags(alu);
 }
 
-static inline bool isSignedAddOverflow(sword left, sword right, sdword result) {
-    if ((left > 0 && right > 0 && result < 0) || (left < 0 && right < 0 && result > 0))
-    {
+static bool is_signed_add_overflow(sword left, sword right, sdword result) {
+    if ((left > 0 && right > 0 && result < 0) || (left < 0 && right < 0 && result > 0)) {
         return true;
     }
-    if (((sdword) left + (sdword) right) != result)
-    {
-        return true;
-    }
-    return false;
-}
-
-static inline bool isSignedMulOverflow(sword left, sword right, sdword result) {
-    if (((sdword) left * (sdword) right) != result)
-    {
+    if (((sdword)left + (sdword)right) != result) {
         return true;
     }
     return false;
 }
 
-static inline bool isSignedDivOverflow(sword left, sword right, sdword result) {
-    if (((sdword) left / (sdword) right) != result)
-    {
+static bool is_signed_multiply_overflow(sword left, sword right, sdword result) {
+    if (((sdword)left * (sdword)right) != result) {
         return true;
     }
     return false;
 }
 
-static void alu_setSignedFlags(ALU* alu) {
-    sdword result = (sdword) alu->result_;
-    sword left = (sword) alu->left_;
-    sword right = (sword) alu->right_;
+static bool is_signed_divide_overflow(sword left, sword right, sdword result) {
+    if (((sdword)left / (sdword)right) != result) {
+        return true;
+    }
+    return false;
+}
 
-    switch (alu->op_)
-    {
+static void alu_set_signed_flags(ALU* alu) {
+    sdword result = (sdword)alu->result_;
+    sword left = (sword)alu->left_;
+    sword right = (sword)alu->right_;
+
+    switch (alu->op_) {
         case OP_SADD:
-            alu->flags_.V = isSignedAddOverflow(left, right, result);
+            alu->flags_.V = is_signed_add_overflow(left, right, result);
             break;
         case OP_SSUB:
-            alu->flags_.V = isSignedAddOverflow(left, -right, result);
+            alu->flags_.V = is_signed_add_overflow(left, -right, result);
             break;
         case OP_SMUL:
-            alu->flags_.V = isSignedMulOverflow(left, right, result);
+            alu->flags_.V = is_signed_multiply_overflow(left, right, result);
             break;
         case OP_SDIV:
-            alu->flags_.V = isSignedDivOverflow(left, right, result);
+            alu->flags_.V = is_signed_divide_overflow(left, right, result);
             break;
         case OP_SMOD:
             break;
@@ -129,48 +123,44 @@ static void alu_setSignedFlags(ALU* alu) {
     }
 }
 
-static inline bool isUnsignedAddOverflow(word left, word right, dword result) {
-    if (((dword) left + (dword) right) != result)
-    {
+static bool is_unsigned_add_overflow(word left, word right, dword result) {
+    if (((dword)left + (dword)right) != result) {
         return true;
     }
     return false;
 }
 
-static inline bool isUnsignedMulOverflow(word left, word right, dword result) {
-    if (((dword) left * (dword) right) != result)
-    {
+static bool is_unsigned_multiply_overflow(word left, word right, dword result) {
+    if (((dword)left * (dword)right) != result) {
         return true;
     }
     return false;
 }
 
-static inline bool isUnsignedDivOverflow(word left, word right, dword result) {
-    if (((dword) left * (dword) right) != result)
-    {
+static bool is_unsigned_divide_overflow(word left, word right, dword result) {
+    if (((dword)left * (dword)right) != result) {
         return true;
     }
     return false;
 }
 
-static void alu_setUnsignedFlags(ALU* alu) {
+static void alu_set_unsigned_flags(ALU* alu) {
     word left = alu->left_;
     word right = alu->right_;
     dword result = alu->result_;
 
-    switch (alu->op_)
-    {
+    switch (alu->op_) {
         case OP_ADD:
-            alu->flags_.C = isUnsignedAddOverflow(left, right, result);
+            alu->flags_.C = is_unsigned_add_overflow(left, right, result);
             break;
         case OP_SUB:
-            alu->flags_.C = isUnsignedAddOverflow(left, ~right, result);
+            alu->flags_.C = is_unsigned_add_overflow(left, ~right, result);
             break;
         case OP_MUL:
-            alu->flags_.C = isUnsignedMulOverflow(left, right, result);
+            alu->flags_.C = is_unsigned_multiply_overflow(left, right, result);
             break;
         case OP_DIV:
-            alu->flags_.C = isUnsignedDivOverflow(left, right, result);
+            alu->flags_.C = is_unsigned_divide_overflow(left, right, result);
             break;
         case OP_MOD:
             break;
@@ -180,22 +170,17 @@ static void alu_setUnsignedFlags(ALU* alu) {
 }
 
 void alu_setFlags(ALU* alu) {
-    if (alu->result_ == 0)
-    {
+    if (alu->result_ == 0) {
         alu->flags_.Z = true;
     }
-    if ((sword) alu->result_ < 0)
-    {
+    if ((sword)alu->result_ < 0) {
         alu->flags_.N = true;
     }
 
-    if (alu->flags_.S)
-    {
-        alu_setSignedFlags(alu);
-    }
-    else
-    {
-        alu_setUnsignedFlags(alu);
+    if (alu->flags_.S) {
+        alu_set_signed_flags(alu);
+    } else {
+        alu_set_unsigned_flags(alu);
     }
 }
 
@@ -205,6 +190,5 @@ void alu_reset(ALU* alu) {
     alu->result_ = 0;
     alu->op_ = OP_NOOP;
 
-    byte dummy = 0;
-    alu->flags_ = *((struct ALUFlags*) &dummy);
+    alu->flags_ = (ALUFlags){0};
 }

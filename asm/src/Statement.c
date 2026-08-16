@@ -3,10 +3,10 @@
 
 #include "Statement.h"
 
-void statement_init(struct Statement* s) {
-    s->opcode = NULL;
-    s->cond = NULL;
-    s->reg1 = NULL;
-    s->reg2 = NULL;
-    s->imm = NULL;
+void statement_init(Statement* statement) {
+    statement->opcode = NULL;
+    statement->cond = NULL;
+    statement->reg1 = NULL;
+    statement->reg2 = NULL;
+    statement->imm = NULL;
 }

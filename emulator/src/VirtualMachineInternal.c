@@ -1,54 +1,60 @@
 // Created by Stanislav on 2019-04-26.
 //
 #include "VirtualMachineInternal.h"
-#include <stdio.h>
+
 #include "Memory.h"
+
+#include <stdio.h>
+#include <string.h>
 
 #if DEBUG
 
-static inline void printRegisters(VirtualMachine* vm, byte columns) {
-    for (word i = 0; i < ZLVM_REGISTER_COUNT; i += columns)
-    {
-        for (byte j = 0; j < columns && (i + j) < ZLVM_REGISTER_COUNT; j++)
-        {
+static inline void print_registers(VirtualMachine* vm, byte columns) {
+    for (word i = 0; i < ZLVM_REGISTER_COUNT; i += columns) {
+        for (byte j = 0; j < columns && (i + j) < ZLVM_REGISTER_COUNT; j++) {
             printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
         }
         printf("\n");
     }
 
-    printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n",
-           vm->_registers[R_PC].word_, vm->_registers[R_SP].word_, vm->_registers[R_BP].word_,
-           vm->_registers[R_SC].word_, vm->_registers[R_LP].word_);
-    printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n",
-           vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V, vm->_cpsr.C, vm->_cpsr.S, vm->_cpsr.ST);
+    printf("[PC]:\t%d\t[SP]:\t%d\t[BP]:\t%d\t[SC]:\t%d\t[LP]:\t%d\n", vm->_registers[R_PC].word_,
+           vm->_registers[R_SP].word_, vm->_registers[R_BP].word_, vm->_registers[R_SC].word_,
+           vm->_registers[R_LP].word_);
+    printf("[CPSR]: N:%d Z:%d V:%d C:%d S:%d ST:%d\n", vm->_cpsr.N, vm->_cpsr.Z, vm->_cpsr.V,
+           vm->_cpsr.C, vm->_cpsr.S, vm->_cpsr.ST);
 }
 #endif
 
 void vm_initialize(VirtualMachine* vm, size_t ram_size) {
-    for (size_t i = 0; i < ZLVM_REGISTER_COUNT; i++)
-    {
+    for (size_t i = 0; i < ZLVM_REGISTER_COUNT; i++) {
         vm->_registers[i].word_ = 0;
     }
-    for (size_t i = 0; i < ZLVM_ROM_SIZE; i++)
-    {
+    for (size_t i = 0; i < ZLVM_ROM_SIZE; i++) {
         vm->_rom[i] = 0;
     }
 
     vm->_memorySize = ram_size;
-    vm->_memory = calloc(ram_size, sizeof(byte));
+    vm->_memory = vm_calloc(ram_size, sizeof *vm->_memory);
 
     vm->_cpsr.value_.word_ = 0;
-    setState(vm, S_NORMAL);
+    vm_set_state(vm, S_NORMAL);
+}
+
+void vm_destroy(VirtualMachine* vm) {
+    if (vm == NULL) {
+        return;
+    }
+    free(vm->_memory);
+    vm->_memory = NULL;
+    vm->_memorySize = 0;
 }
 
 void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
-    if (size > ZLVM_ROM_SIZE)
-    {
-        setState(vm, S_ERR_OUT_OF_MEMORY);
+    if (size > ZLVM_ROM_SIZE) {
+        vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
         return;
     }
-    for (size_t i = 0; i < size; i++)
-    {
+    for (size_t i = 0; i < size; i++) {
         vm->_rom[i] = program[i];
     }
 }
@@ -57,71 +63,77 @@ State vm_run(VirtualMachine* vm) {
     vm->_registers[R_PC].word_ = 0; // set to start of rom
     vm->_registers[R_BP].word_ = ZLVM_ROM_SIZE;
     vm->_registers[R_SP].word_ = vm->_registers[R_BP].word_; // set to start of memory
-    while (notError(vm) && !checkState(vm, S_HALTED))
-    {
-        runInstruction(vm, fetchInstruction(vm));
+    while (vm_has_no_error(vm) && !vm_has_state(vm, S_HALTED)) {
+        vm_run_instruction(vm, vm_fetch_instruction(vm));
     }
 #if DEBUG
-    printRegisters(vm, 4);
+    print_registers(vm, 4);
 #endif
-    return getState(vm);
+    return vm_get_state(vm);
 }
 
-byte fetchByte(VirtualMachine* vm) {
-    return readByte(vm, vm->_registers[R_PC].word_++);
+byte vm_fetch_byte(VirtualMachine* vm) {
+    return vm_read_byte(vm, vm->_registers[R_PC].word_++);
 }
 
-struct Instruction fetchInstruction(VirtualMachine* vm) {
-    byte bufArr[sizeof(Instruction)] = {0};
-    for (size_t i = 0; i < sizeof(Instruction); i++)
-    {
-        bufArr[i] = fetchByte(vm);
+Instruction vm_fetch_instruction(VirtualMachine* vm) {
+    byte bytes[sizeof(Instruction)] = {0};
+    for (size_t index = 0; index < sizeof(Instruction); index++) {
+        bytes[index] = vm_fetch_byte(vm);
     }
-    return *((Instruction*) &bufArr);
+
+    Instruction instruction = {0};
+    memcpy(&instruction, bytes, sizeof instruction);
+    return instruction;
 }
 
-void runInstruction(VirtualMachine* vm, Instruction instruction) {
-    if (!checkCondition(vm, instruction.condition_))
+void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
+    if (!vm_check_condition(vm, instruction.condition_)) {
         return;
+    }
+
+    if (instruction.register1 >= ZLVM_REGISTER_COUNT ||
+        instruction.register2 >= ZLVM_REGISTER_COUNT) {
+        vm_set_state(vm, S_ERR_INVALID_OPCODE);
+        return;
+    }
 
     Value* reg1 = &vm->_registers[instruction.register1];
     Value* reg2 = &vm->_registers[instruction.register2];
     word imm = instruction.immediate;
+    bool write_alu_result = false;
 
 #ifdef DEBUG
     /*
-    printf("[S: 0x%X LP: 0x%X]: ", readWord(vm, vm->_registers[R_SP].word_),
+    printf("[S: 0x%X LP: 0x%X]: ", vm_read_word(vm, vm->_registers[R_SP].word_),
            vm->_registers[R_LP].word_);
     printf("0x%X: ", vm->_registers[R_PC].word_);
     instruction_print(&instruction);
      */
 #endif
 
-    switch (instruction.opcode_)
-    {
+    switch (instruction.opcode_) {
         case NOP:
             break;
 
         case POPR:
-            reg1->word_ = popWord(vm);
+            reg1->word_ = vm_pop_word(vm);
             break;
         case POP:
-            popWord(vm);
+            vm_pop_word(vm);
             break;
 
         case PUSHR:
-            pushWord(vm, reg1->word_);
+            vm_push_word(vm, reg1->word_);
             break;
         case PUSHI:
-            pushWord(vm, imm);
+            vm_push_word(vm, imm);
             break;
-        case DUP:
-        {
-            word buf = popWord(vm);
-            pushWord(vm, buf);
-            pushWord(vm, buf);
-        }
-            break;
+        case DUP: {
+            word value = vm_pop_word(vm);
+            vm_push_word(vm, value);
+            vm_push_word(vm, value);
+        } break;
 
         case MOVR:
             reg1->word_ = reg2->word_;
@@ -131,136 +143,169 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
             break;
 
         case ADDR:
-            doOperation(vm, OP_ADD, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_ADD, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case SUBR:
-            doOperation(vm, OP_SUB, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SUB, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case MULR:
-            doOperation(vm, OP_MUL, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_MUL, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case DIVR:
-            doOperation(vm, OP_DIV, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_DIV, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case MODR:
-            doOperation(vm, OP_MOD, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_MOD, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
 
         case ADDI:
-            doOperation(vm, OP_ADD, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_ADD, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case SUBI:
-            doOperation(vm, OP_SUB, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SUB, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case MULI:
-            doOperation(vm, OP_MUL, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_MUL, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case DIVI:
-            doOperation(vm, OP_DIV, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_DIV, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case MODI:
-            doOperation(vm, OP_MOD, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_MOD, reg1->word_, imm);
+            write_alu_result = true;
+            break;
 
         case ADDSR:
-            doOperation(vm, OP_SADD, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SADD, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case SUBSR:
-            doOperation(vm, OP_SSUB, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SSUB, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case MULSR:
-            doOperation(vm, OP_SMUL, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SMUL, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case DIVSR:
-            doOperation(vm, OP_SDIV, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SDIV, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case MODSR:
-            doOperation(vm, OP_SMOD, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SMOD, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
 
         case ADDSI:
-            doOperation(vm, OP_SADD, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SADD, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case SUBSI:
-            doOperation(vm, OP_SSUB, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SSUB, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case MULSI:
-            doOperation(vm, OP_SMUL, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SMUL, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case DIVSI:
-            doOperation(vm, OP_SDIV, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SDIV, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case MODSI:
-            doOperation(vm, OP_SMOD, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_SMOD, reg1->word_, imm);
+            write_alu_result = true;
+            break;
 
         case NOT:
-            doOperation(vm, OP_NOT, reg1->word_, 0);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_NOT, reg1->word_, 0);
+            write_alu_result = true;
+            break;
         case ANDR:
-            doOperation(vm, OP_AND, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_AND, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case ORR:
-            doOperation(vm, OP_OR, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_OR, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case XORR:
-            doOperation(vm, OP_XOR, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_XOR, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case NANDR:
-            doOperation(vm, OP_NAND, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_NAND, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
         case NORR:
-            doOperation(vm, OP_NOR, reg1->word_, reg2->word_);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_NOR, reg1->word_, reg2->word_);
+            write_alu_result = true;
+            break;
 
         case ANDI:
-            doOperation(vm, OP_AND, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_AND, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case ORI:
-            doOperation(vm, OP_OR, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_OR, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case XORI:
-            doOperation(vm, OP_XOR, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_XOR, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case NANDI:
-            doOperation(vm, OP_NAND, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_NAND, reg1->word_, imm);
+            write_alu_result = true;
+            break;
         case NORI:
-            doOperation(vm, OP_NOR, reg1->word_, imm);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_NOR, reg1->word_, imm);
+            write_alu_result = true;
+            break;
 
         case INC:
-            doOperation(vm, OP_INC, reg1->word_, 0);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_INC, reg1->word_, 0);
+            write_alu_result = true;
+            break;
         case DEC:
-            doOperation(vm, OP_DEC, reg1->word_, 0);
-            goto __alu_write_result;
+            vm_do_operation(vm, OP_DEC, reg1->word_, 0);
+            write_alu_result = true;
+            break;
 
         case LOADB:
-            reg1->byte_ = readByte(vm, reg2->word_ + imm);
+            reg1->byte_ = vm_read_byte(vm, reg2->word_ + imm);
             break;
         case LOADH:
-            reg1->hword_ = readHword(vm, reg2->word_ + imm);
+            reg1->hword_ = vm_read_hword(vm, reg2->word_ + imm);
             break;
         case LOADW:
-            reg1->word_ = readWord(vm, reg2->word_ + imm);
+            reg1->word_ = vm_read_word(vm, reg2->word_ + imm);
             break;
 
         case STOREB:
-            writeByte(vm, reg2->word_ + imm, reg1->byte_);
+            vm_write_byte(vm, reg2->word_ + imm, reg1->byte_);
             break;
         case STOREH:
-            writeHword(vm, reg2->word_ + imm, reg1->hword_);
+            vm_write_hword(vm, reg2->word_ + imm, reg1->hword_);
             break;
         case STOREW:
-            writeWord(vm, reg2->word_ + imm, reg1->word_);
+            vm_write_word(vm, reg2->word_ + imm, reg1->word_);
             break;
 
         case INT:
-            interrupt(vm, imm);
+            vm_interrupt(vm, imm);
             break;
         case SYSCALL:
-            syscall(vm);
+            vm_syscall(vm);
             break;
 
         case JMPAL:
@@ -275,36 +320,34 @@ void runInstruction(VirtualMachine* vm, Instruction instruction) {
             break;
 
         case CMPI:
-            doOperation(vm, OP_SUB, reg1->word_, imm);
+            vm_do_operation(vm, OP_SUB, reg1->word_, imm);
             break;
         case CMPR:
-            doOperation(vm, OP_SUB, reg1->word_, reg2->word_);
+            vm_do_operation(vm, OP_SUB, reg1->word_, reg2->word_);
             break;
         case CMPSI:
-            doOperation(vm, OP_SSUB, reg1->word_, imm);
+            vm_do_operation(vm, OP_SSUB, reg1->word_, imm);
             break;
         case CMPSR:
-            doOperation(vm, OP_SSUB, reg1->word_, reg2->word_);
+            vm_do_operation(vm, OP_SSUB, reg1->word_, reg2->word_);
             break;
 
         default:
-            setState(vm, S_ERR_INVALID_OPCODE);
-            break;
-
-        __alu_write_result:
-            reg1->word_ = vm->_alu.result_;
+            vm_set_state(vm, S_ERR_INVALID_OPCODE);
             break;
     }
 
-    if (vm->_alu.op_ != OP_NOOP)
-    {
+    if (write_alu_result) {
+        reg1->word_ = vm->_alu.result_;
+    }
+
+    if (vm->_alu.op_ != OP_NOOP) {
         alu_reset(&vm->_alu);
     }
 }
 
-bool checkCondition(VirtualMachine* vm, Condition condition) {
-    switch (condition)
-    {
+bool vm_check_condition(VirtualMachine* vm, Condition condition) {
+    switch (condition) {
         case C_UNCONDITIONAL:
             return true;
 
@@ -348,135 +391,124 @@ bool checkCondition(VirtualMachine* vm, Condition condition) {
             return !((vm->_cpsr.N) ^ (vm->_cpsr.V));
 
         default:
-            setState(vm, S_ERR_INVALID_CONDITION);
+            vm_set_state(vm, S_ERR_INVALID_CONDITION);
             return false;
     }
 }
 
-byte readByte(VirtualMachine* this, size_t address) {
-    if (address >= ZLVM_ROM_SIZE)
-    {
+byte vm_read_byte(VirtualMachine* vm, size_t address) {
+    if (address >= ZLVM_ROM_SIZE) {
         address -= ZLVM_ROM_SIZE;
 
-        if (address >= this->_memorySize)
-        {
-            setState(this, S_ERR_OUT_OF_MEMORY);
+        if (address >= vm->_memorySize) {
+            vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
             return 0;
         }
-        return this->_memory[address];
+        return vm->_memory[address];
     }
-    return this->_rom[address];
+    return vm->_rom[address];
 }
 
-void writeByte(VirtualMachine* this, size_t address, byte value) {
-    if (address >= ZLVM_ROM_SIZE)
-    {
+void vm_write_byte(VirtualMachine* vm, size_t address, byte value) {
+    if (address >= ZLVM_ROM_SIZE) {
         address -= ZLVM_ROM_SIZE;
-        if (address >= this->_memorySize)
-        {
-            setState(this, S_ERR_OUT_OF_MEMORY);
+        if (address >= vm->_memorySize) {
+            vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
             return;
         }
-        this->_memory[address] = value;
-    }
-    this->_rom[address] = value;
-}
-
-hword readHword(VirtualMachine* this, size_t address) {
-    hword res = 0;
-    byte* ptr = (byte*) &res;
-    for (size_t i = 0; i < sizeof(hword); i++)
-    {
-        ptr[i] = readByte(this, address + i);
-    }
-    return res;
-}
-
-void writeHword(VirtualMachine* this, size_t address, hword value) {
-    byte* buf = (byte*) &value;
-    for (size_t i = 0; i < sizeof(hword); i++)
-    {
-        writeByte(this, address + i, buf[i]);
-    }
-}
-
-word readWord(VirtualMachine* this, size_t address) {
-    word res = 0;
-    byte* ptr = (byte*) &res;
-    for (size_t i = 0; i < sizeof(word); i++)
-    {
-        ptr[i] = readByte(this, address + i);
-    }
-    return res;
-}
-
-void writeWord(VirtualMachine* this, size_t address, word value) {
-    byte* buf = (byte*) &value;
-    for (size_t i = 0; i < sizeof(word); i++)
-    {
-        writeByte(this, address + i, buf[i]);
-    }
-}
-
-dword readDword(VirtualMachine* this, size_t address) {
-    dword res = 0;
-    byte* ptr = (byte*) &res;
-    for (size_t i = 0; i < sizeof(dword); i++)
-    {
-        ptr[i] = readByte(this, address + i);
-    }
-    return res;
-}
-
-void writeDword(VirtualMachine* this, size_t address, dword value) {
-    byte* buf = (byte*) &value;
-    for (size_t i = 0; i < sizeof(dword); i++)
-    {
-        writeByte(this, address + i, buf[i]);
-    }
-}
-
-word popWord(VirtualMachine* this) {
-    if ((this->_registers[R_SP].word_ - ZLVM_WORD_SIZE) < this->_registers[R_BP].word_)
-    {
-        setState(this, S_ERR_STACK_UNDERFLOW);
-        return 0;
-    }
-    word res = readWord(this, this->_registers[R_SP].word_);
-    this->_registers[R_SP].word_ -= ZLVM_WORD_SIZE;
-    return res;
-}
-
-void pushWord(VirtualMachine* this, word value) {
-    if (this->_registers[R_SP].word_ + ZLVM_WORD_SIZE - this->_registers[R_BP].word_ >= ZLVM_STACK_SIZE)
-    {
-        setState(this, S_ERR_STACK_OVERFLOW);
+        vm->_memory[address] = value;
         return;
     }
-    this->_registers[R_SP].word_ += ZLVM_WORD_SIZE;
-    writeWord(this, this->_registers[R_SP].word_, value);
+    vm->_rom[address] = value;
 }
 
-bool notError(VirtualMachine* vm) {
+hword vm_read_hword(VirtualMachine* vm, size_t address) {
+    hword result = 0;
+    byte* bytes = (byte*)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
+    return result;
+}
+
+void vm_write_hword(VirtualMachine* vm, size_t address, hword value) {
+    const byte* bytes = (const byte*)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
+}
+
+word vm_read_word(VirtualMachine* vm, size_t address) {
+    word result = 0;
+    byte* bytes = (byte*)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
+    return result;
+}
+
+void vm_write_word(VirtualMachine* vm, size_t address, word value) {
+    const byte* bytes = (const byte*)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
+}
+
+dword vm_read_dword(VirtualMachine* vm, size_t address) {
+    dword result = 0;
+    byte* bytes = (byte*)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
+    return result;
+}
+
+void vm_write_dword(VirtualMachine* vm, size_t address, dword value) {
+    const byte* bytes = (const byte*)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
+}
+
+word vm_pop_word(VirtualMachine* vm) {
+    if (vm->_registers[R_SP].word_ <= vm->_registers[R_BP].word_) {
+        vm_set_state(vm, S_ERR_STACK_UNDERFLOW);
+        return 0;
+    }
+    word result = vm_read_word(vm, vm->_registers[R_SP].word_);
+    vm->_registers[R_SP].word_ -= ZLVM_WORD_SIZE;
+    return result;
+}
+
+void vm_push_word(VirtualMachine* vm, word value) {
+    word used_stack = vm->_registers[R_SP].word_ - vm->_registers[R_BP].word_;
+    if (used_stack > ZLVM_STACK_SIZE - ZLVM_WORD_SIZE) {
+        vm_set_state(vm, S_ERR_STACK_OVERFLOW);
+        return;
+    }
+    vm->_registers[R_SP].word_ += ZLVM_WORD_SIZE;
+    vm_write_word(vm, vm->_registers[R_SP].word_, value);
+}
+
+bool vm_has_no_error(VirtualMachine* vm) {
     return !is_error(vm->_cpsr.ST);
 }
 
-bool checkState(VirtualMachine* vm, State state) {
+bool vm_has_state(VirtualMachine* vm, State state) {
     return vm->_cpsr.ST == state;
 }
 
-void setState(VirtualMachine* vm, State state) {
-    if (notError(vm))
-    {
+void vm_set_state(VirtualMachine* vm, State state) {
+    if (vm_has_no_error(vm)) {
         vm->_cpsr.ST = state;
     }
 }
 
-enum State getState(VirtualMachine* vm) {
+enum State vm_get_state(VirtualMachine* vm) {
     return vm->_cpsr.ST;
 }
 
-void doOperation(VirtualMachine* vm, Operation op, word left, word right) {
+void vm_do_operation(VirtualMachine* vm, Operation op, word left, word right) {
     vm->_alu.op_ = op;
     vm->_alu.left_ = left;
     vm->_alu.right_ = right;
@@ -490,10 +522,9 @@ void doOperation(VirtualMachine* vm, Operation op, word left, word right) {
     vm->_cpsr.S = vm->_alu.flags_.S;
 }
 
-void interrupt(VirtualMachine* vm, word code) {
-    // TODO: прерывания :)))
-    switch (code)
-    {
+void vm_interrupt(VirtualMachine* vm, word code) {
+    // TODO(emulator): replace host I/O interrupts with an injectable interface.
+    switch (code) {
         case 0x01:
             fputc(vm->_registers[R_A0].byte_ + 0x60, stdout);
             break;
@@ -501,20 +532,19 @@ void interrupt(VirtualMachine* vm, word code) {
             fputc(vm->_registers[R_A0].byte_, stdout);
             break;
         case 0x10:
-            vm->_registers[R_V0].word_ = (word) fgetc(stdin);
+            vm->_registers[R_V0].word_ = (word)fgetc(stdin);
             break;
         case 0xFF:
-            setState(vm, S_HALTED);
+            vm_set_state(vm, S_HALTED);
             break;
         default:
             break;
     }
 }
 
-void syscall(VirtualMachine* vm) {
-    // TODO: софтовые прерывания :)))
-    switch (vm->_registers[R_SC].word_)
-    {
+void vm_syscall(VirtualMachine* vm) {
+    // TODO(emulator): implement syscall services.
+    switch (vm->_registers[R_SC].word_) {
         default:
             break;
     }

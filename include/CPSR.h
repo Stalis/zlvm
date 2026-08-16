@@ -5,8 +5,8 @@
 #ifndef ZLVM_C_CPSR_H
 #define ZLVM_C_CPSR_H
 
-#include "Types.h"
 #include "State.h"
+#include "Types.h"
 #include "Value.h"
 
 typedef union CPSR {
@@ -23,4 +23,4 @@ typedef union CPSR {
     };
 } CPSR;
 
-#endif //ZLVM_C_CPSR_H
+#endif // ZLVM_C_CPSR_H

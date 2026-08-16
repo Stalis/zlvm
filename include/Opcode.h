@@ -5,71 +5,71 @@
 #ifndef ZLVM_C_OPCODE_H
 #define ZLVM_C_OPCODE_H
 
-#include <string.h>
 #include "Types.h"
 
-#define FOREACH_OPCODE(OPCODE) \
-    OPCODE(NOP)\
-    OPCODE(POP)\
-    OPCODE(POPR)\
-    OPCODE(PUSHR)\
-    OPCODE(PUSHI)\
-    OPCODE(DUP)\
-    OPCODE(MOVR)\
-    OPCODE(MOVI)\
-    OPCODE(ADDR)\
-    OPCODE(SUBR)\
-    OPCODE(MULR)\
-    OPCODE(DIVR)\
-    OPCODE(MODR)\
-    OPCODE(ADDI)\
-    OPCODE(SUBI)\
-    OPCODE(MULI)\
-    OPCODE(DIVI)\
-    OPCODE(MODI)\
-    OPCODE(INT)\
-    OPCODE(SYSCALL)\
-    OPCODE(JMP)\
-    OPCODE(NOT)\
-    OPCODE(ANDR)\
-    OPCODE(ORR)\
-    OPCODE(XORR)\
-    OPCODE(NANDR)\
-    OPCODE(NORR)\
-    OPCODE(ANDI)\
-    OPCODE(ORI)\
-    OPCODE(XORI)\
-    OPCODE(NANDI)\
-    OPCODE(NORI)\
-    OPCODE(INC)\
-    OPCODE(DEC)\
-    OPCODE(LOADB)\
-    OPCODE(STOREB)\
-    OPCODE(LOADH)\
-    OPCODE(STOREH)\
-    OPCODE(LOADW)\
-    OPCODE(STOREW)\
-    OPCODE(JMPAL)\
-    OPCODE(RET)\
-    OPCODE(CMPR)\
-    OPCODE(CMPI)\
-    OPCODE(CMPSR)\
-    OPCODE(CMPSI)\
-    OPCODE(ADDSR)\
-    OPCODE(SUBSR)\
-    OPCODE(MULSR)\
-    OPCODE(DIVSR)\
-    OPCODE(MODSR)\
-    OPCODE(ADDSI)\
-    OPCODE(SUBSI)\
-    OPCODE(MULSI)\
-    OPCODE(DIVSI)\
+#include <string.h>
+
+#define FOREACH_OPCODE(OPCODE)                                                                     \
+    OPCODE(NOP)                                                                                    \
+    OPCODE(POP)                                                                                    \
+    OPCODE(POPR)                                                                                   \
+    OPCODE(PUSHR)                                                                                  \
+    OPCODE(PUSHI)                                                                                  \
+    OPCODE(DUP)                                                                                    \
+    OPCODE(MOVR)                                                                                   \
+    OPCODE(MOVI)                                                                                   \
+    OPCODE(ADDR)                                                                                   \
+    OPCODE(SUBR)                                                                                   \
+    OPCODE(MULR)                                                                                   \
+    OPCODE(DIVR)                                                                                   \
+    OPCODE(MODR)                                                                                   \
+    OPCODE(ADDI)                                                                                   \
+    OPCODE(SUBI)                                                                                   \
+    OPCODE(MULI)                                                                                   \
+    OPCODE(DIVI)                                                                                   \
+    OPCODE(MODI)                                                                                   \
+    OPCODE(INT)                                                                                    \
+    OPCODE(SYSCALL)                                                                                \
+    OPCODE(JMP)                                                                                    \
+    OPCODE(NOT)                                                                                    \
+    OPCODE(ANDR)                                                                                   \
+    OPCODE(ORR)                                                                                    \
+    OPCODE(XORR)                                                                                   \
+    OPCODE(NANDR)                                                                                  \
+    OPCODE(NORR)                                                                                   \
+    OPCODE(ANDI)                                                                                   \
+    OPCODE(ORI)                                                                                    \
+    OPCODE(XORI)                                                                                   \
+    OPCODE(NANDI)                                                                                  \
+    OPCODE(NORI)                                                                                   \
+    OPCODE(INC)                                                                                    \
+    OPCODE(DEC)                                                                                    \
+    OPCODE(LOADB)                                                                                  \
+    OPCODE(STOREB)                                                                                 \
+    OPCODE(LOADH)                                                                                  \
+    OPCODE(STOREH)                                                                                 \
+    OPCODE(LOADW)                                                                                  \
+    OPCODE(STOREW)                                                                                 \
+    OPCODE(JMPAL)                                                                                  \
+    OPCODE(RET)                                                                                    \
+    OPCODE(CMPR)                                                                                   \
+    OPCODE(CMPI)                                                                                   \
+    OPCODE(CMPSR)                                                                                  \
+    OPCODE(CMPSI)                                                                                  \
+    OPCODE(ADDSR)                                                                                  \
+    OPCODE(SUBSR)                                                                                  \
+    OPCODE(MULSR)                                                                                  \
+    OPCODE(DIVSR)                                                                                  \
+    OPCODE(MODSR)                                                                                  \
+    OPCODE(ADDSI)                                                                                  \
+    OPCODE(SUBSI)                                                                                  \
+    OPCODE(MULSI)                                                                                  \
+    OPCODE(DIVSI)                                                                                  \
     OPCODE(MODSI)
 
 #define GENERATE_ENUM(ENUM) ENUM,
 typedef enum Opcode {
-    FOREACH_OPCODE(GENERATE_ENUM)
-    OPCODE_TOTAL,
+    FOREACH_OPCODE(GENERATE_ENUM) OPCODE_TOTAL,
 } Opcode;
 
 #undef GENERATE_ENUM
@@ -88,4 +88,4 @@ const char* opcode_to_string(Opcode op);
  */
 Opcode string_to_opcode(const char* string);
 
-#endif //ZLVM_C_OPCODE_H
+#endif // ZLVM_C_OPCODE_H

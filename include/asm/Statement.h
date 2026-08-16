@@ -15,6 +15,6 @@ typedef struct Statement {
     Token* imm;
 } Statement;
 
-void statement_init(Statement*);
+void statement_init(Statement* statement);
 
-#endif //ZLVM_C_STATEMENT_H
+#endif // ZLVM_C_STATEMENT_H

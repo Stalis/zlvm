@@ -1,168 +1,133 @@
-// Created by Stanislav on 2019-05-13.
-//
-
-#include <memory.h>
-#include <assert.h>
-
 #include "Directive.h"
+
 #include "Memory.h"
 
-static inline enum DirectiveType get_directive_type(struct Token*);
+#include <assert.h>
+#include <string.h>
 
-/*
- * Initialize directive with name as token
- * If name token is valid, sets directive.type
- * @return `true` if directive name is valid, else returns `false`
- */
-bool directive_init(struct Directive* d, Token* name) {
-    assert(d != NULL);
-    d->type = get_directive_type(name);
-    if (d->type == DIR_TOTAL)
-        return false;
+static DirectiveType get_directive_type(const Token* token);
+static byte* encode_numeric_data(const Directive* directive, size_t element_size,
+                                 dword maximum_value, size_t* output_size);
 
-    d->argc = 0;
-    d->argv = NULL;
-    return true;
+bool directive_init(Directive* directive, Token* name) {
+    assert(directive != NULL);
+
+    directive->type = get_directive_type(name);
+    directive->argc = 0;
+    directive->argv = NULL;
+    return directive->type != DIR_TOTAL;
 }
 
-/*
- * Adds argument token to directive statement
- */
-void directive_add_arg(struct Directive* d, Token* arg) {
-    if (d == NULL)
-    {
-        ZLASM__TOKEN_CRASH("Directive is null", arg);
+void directive_add_arg(Directive* directive, Token* argument) {
+    if (directive == NULL) {
+        ZLASM_TOKEN_CRASH("Directive is null", argument);
     }
-    assert(d != NULL);
-    if (d->argc == 0)
-    {
-        d->argv = malloc(sizeof(Token*));
-    }
-    else
-    {
-        d->argv = realloc(d->argv, sizeof(Token*) * (d->argc + 1));
-    }
-    d->argv[d->argc++] = arg;
+
+    size_t new_count = directive->argc + 1;
+    directive->argv = asm_realloc(directive->argv, new_count * sizeof *directive->argv);
+    directive->argv[directive->argc] = argument;
+    directive->argc = new_count;
 }
 
-/*
- * Free memory, allocated for directive
- */
-void directive_free(struct Directive* d) {
-    if (NULL != d)
-    {
-        if (NULL != d->argv)
-        {
-            free(d->argv);
+void directive_free(Directive* directive) {
+    if (directive == NULL) {
+        return;
+    }
+    asm_free(directive->argv);
+    asm_free(directive);
+}
+
+static DirectiveType get_directive_type(const Token* token) {
+    static const struct {
+        const char* name;
+        DirectiveType type;
+    } directives[] = {
+        {"section", DIR_SECTION}, {"global", DIR_GLOBAL},   {"extern", DIR_EXTERN},
+        {"align", DIR_ALIGN},     {"entry", DIR_ENTRY},     {"locate", DIR_LOCATE},
+        {"ascii", DIR_ASCII},     {"asciiz", DIR_ASCIIZ},   {"byte", DIR_BYTE},
+        {"hword", DIR_HWORD},     {"word", DIR_WORD},       {"dword", DIR_DWORD},
+        {"space", DIR_SPACE},     {"macro", DIR_MACRO},     {"endmacro", DIR_ENDMACRO},
+        {"proc", DIR_PROC},       {"endproc", DIR_ENDPROC},
+    };
+
+    for (size_t index = 0; index < sizeof directives / sizeof directives[0]; index++) {
+        if (strcmp(token->value, directives[index].name) == 0) {
+            return directives[index].type;
         }
-
-        free(d);
     }
-}
-
-static inline enum DirectiveType get_directive_type(Token* t) {
-#define CHECK(str, res) \
-    if (strcmp(t->value, str) == 0) \
-        return res
-
-    CHECK("section", DIR_SECTION);
-    CHECK("global", DIR_GLOBAL); // Declare global symbol
-    CHECK("extern", DIR_EXTERN); // Declare external symbol
-    CHECK("align", DIR_ALIGN);   // Aligning data below for 2^arg bytes
-    CHECK("entry", DIR_ENTRY);   // Declare entry point symbol
-    CHECK("locate", DIR_LOCATE); // Static shift code below
-    /* Data directives */
-    CHECK("ascii", DIR_ASCII);      // Non-null-terminated string
-    CHECK("asciiz", DIR_ASCIIZ);    // Null-terminated string
-    CHECK("byte", DIR_BYTE);        // sequence of byte(8 bit) values
-    CHECK("hword", DIR_HWORD);      // sequence of half word(16 bit) values
-    CHECK("word", DIR_WORD);        // sequence of word(32 bit) values
-    CHECK("dword", DIR_DWORD);      // sequence of double word(64 bit) values
-    CHECK("space", DIR_SPACE);      // empty space for N bytes
-    /* Other directives */
-    CHECK("macro", DIR_MACRO);
-    CHECK("endmacro", DIR_ENDMACRO);
-    CHECK("proc", DIR_PROC);        // Begin procedure
-    CHECK("endproc", DIR_ENDPROC);  // End procedure
-
-#undef CHECK
-
     return DIR_TOTAL;
 }
 
-byte* directive_get_raw_data(struct Directive* d, size_t* __size) {
-#define PARSE_DATA_BY(type)             \
-({                                      \
-    *__size = d->argc * sizeof(type);   \
-    res = malloc(*__size);              \
-    ptr = res;                          \
-    size_t i = 0;                       \
-    for (; i < d->argc; i++)            \
-    {                                   \
-        size_t size = 0;                \
-        dword* data =                   \
-                (dword*)token_get_raw_data(d->argv[i], &size);\
-        type val = (type)*data;         \
-        if (*data != val)               \
-            {ZLASM__TOKEN_CRASH("Invalid value size", d->argv[i]);}\
-        memcpy(ptr, &val, sizeof(type));\
-        ptr++;                          \
-    }                                   \
-})
+byte* directive_get_raw_data(Directive* directive, size_t* output_size) {
+    assert(directive != NULL);
+    assert(output_size != NULL);
+    assert(is_data_directive(directive->type));
 
-    assert(is_data_directive(d->type));
-    assert(__size != NULL);
-    *__size = 0;
-
-    byte* res = NULL;
-    byte* ptr;
-
-    switch (d->type)
-    {
+    *output_size = 0;
+    switch (directive->type) {
         case DIR_ASCII:
-        case DIR_ASCIIZ:
-            res = malloc(1);
-            ptr = res;
-            for (size_t i = 0; i < d->argc; i++)
-            {
-                size_t size = 0;
+        case DIR_ASCIIZ: {
+            byte* result = NULL;
+            for (size_t index = 0; index < directive->argc; index++) {
+                size_t value_size = 0;
+                byte* value = token_get_raw_data(directive->argv[index], &value_size);
+                if (directive->argv[index]->type != TOK_STRING_LITERAL) {
+                    value_size = 1;
+                }
 
-                byte* data = token_get_raw_data(d->argv[i], &size);
-                if (d->argv[i]->type != TOK_STRING_LITERAL)
-                    size = 1;
-                *__size += size;
-                res = realloc(res, *__size);
-                memcpy(ptr, data, size);
-                ptr += size;
+                size_t previous_size = *output_size;
+                *output_size += value_size;
+                result = asm_realloc(result, *output_size);
+                memcpy(result + previous_size, value, value_size);
+                asm_free(value);
             }
-            if (d->type == DIR_ASCIIZ)
-            {
-                *__size += 1;
-                res = realloc(res, *__size);
-                res[*__size - 1] = '\0';
-            }
-            break;
 
+            if (directive->type == DIR_ASCIIZ) {
+                result = asm_realloc(result, *output_size + 1);
+                result[*output_size] = '\0';
+                (*output_size)++;
+            }
+            return result;
+        }
         case DIR_BYTE:
-            PARSE_DATA_BY(byte);
-            break;
+            return encode_numeric_data(directive, sizeof(byte), BYTE_MAX, output_size);
         case DIR_HWORD:
-            PARSE_DATA_BY(hword);
-            break;
+            return encode_numeric_data(directive, sizeof(hword), HWORD_MAX, output_size);
         case DIR_WORD:
-            PARSE_DATA_BY(word);
-            break;
+            return encode_numeric_data(directive, sizeof(word), WORD_MAX, output_size);
         case DIR_DWORD:
-            PARSE_DATA_BY(dword);
-            break;
-
+            return encode_numeric_data(directive, sizeof(dword), DWORD_MAX, output_size);
         case DIR_SPACE:
-            *__size = token_get_int_value(d->argv[0]);
-            res = malloc(token_get_int_value(d->argv[0]));
+            if (directive->argc != 1) {
+                ZLASM_CRASH(".space expects exactly one argument");
+            }
+            *output_size = (size_t)token_get_int_value(directive->argv[0]);
+            return asm_calloc(*output_size, sizeof(byte));
         default:
-            break;
+            ZLASM_CRASH("Directive does not emit raw data");
+    }
+}
+
+static byte* encode_numeric_data(const Directive* directive, size_t element_size,
+                                 dword maximum_value, size_t* output_size) {
+    if (directive->argc > SIZE_MAX / element_size) {
+        ZLASM_CRASH("Data directive is too large");
     }
 
-    return res;
-#undef PARSE_DATA_BY
+    *output_size = directive->argc * element_size;
+    byte* result = asm_malloc(*output_size);
+
+    for (size_t index = 0; index < directive->argc; index++) {
+        size_t raw_size = 0;
+        byte* raw_data = token_get_raw_data(directive->argv[index], &raw_size);
+        dword value = 0;
+        memcpy(&value, raw_data, raw_size < sizeof value ? raw_size : sizeof value);
+        asm_free(raw_data);
+
+        if (value > maximum_value) {
+            ZLASM_TOKEN_CRASH("Value does not fit the directive width", directive->argv[index]);
+        }
+        memcpy(result + index * element_size, &value, element_size);
+    }
+    return result;
 }

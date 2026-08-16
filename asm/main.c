@@ -1,165 +1,110 @@
-//
-// Created by Stanislav on 2019-05-27.
-//
-#include <stdio.h>
-#include <assert.h>
-#include "VirtualMachine.h"
 #include "asm/zlasm.h"
-#include "asm/Lexer.h"
-#include "asm/Parser.h"
-#include "asm/Assembler.h"
 #include "src/Memory.h"
 
-#ifdef DEBUG
-static void test_parser(const char* path);
-#endif
-static byte* readSource(const char* path, size_t* size);
-static char* stripExtension(char* path);
-static void writeBinary(const char* path, byte* data, size_t size);
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static byte* read_source(const char* path, size_t* binary_size);
+static char* derive_output_path(const char* input_path);
+static void write_binary(const char* path, const byte* data, size_t size);
 
 int main(int argc, char** argv) {
-    if (argc <= 1) {
-        printf("Too few arguments");
-        exit(-1);
+    if (argc != 2 && argc != 4) {
+        fprintf(stderr, "Usage: %s <assembly-file> [-o <output-file>]\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
-    char* file = argv[1];
+    if (argc == 4 && strcmp(argv[2], "-o") != 0) {
+        fprintf(stderr, "Expected -o before the output path\n");
+        return EXIT_FAILURE;
+    }
 
-#ifdef DEBUG
-    test_parser(file);
-#endif
+    char* derived_path = NULL;
+    const char* output_path = argc == 4 ? argv[3] : (derived_path = derive_output_path(argv[1]));
 
-    size_t size = 0;
-    byte* bin = readSource(file, &size);
+    size_t binary_size = 0;
+    byte* binary = read_source(argv[1], &binary_size);
+    write_binary(output_path, binary, binary_size);
 
-    stripExtension(file);
-    strcat(file, ".bin");
-
-    writeBinary(file, bin, size);
-
-    return 0;
+    asm_free(binary);
+    asm_free(derived_path);
+    return EXIT_SUCCESS;
 }
 
+static byte* read_source(const char* path, size_t* binary_size) {
+    const size_t growth_size = 1024;
+    size_t capacity = growth_size;
+    size_t length = 0;
+    char* source = asm_malloc(capacity + 1);
 
-static byte* readSource(const char* path, size_t* size) {
-    const size_t step_size = 1024;
-    size_t cur_size = step_size;
-    char* source = malloc(sizeof(char) * cur_size);
-
-    size_t i = 0;
-
-    FILE* file = fopen(path, "r");
+    FILE* file = fopen(path, "rb");
     if (file == NULL) {
-        printf("File not found: %s", path);
-        exit(-1);
+        fprintf(stderr, "Unable to open assembly source: %s\n", path);
+        exit(EXIT_FAILURE);
     }
 
-    while (!feof(file)) {
-        source[i] = (char) fgetc(file);
-        i++;
+    while (true) {
+        size_t available = capacity - length;
+        size_t bytes_read = fread(source + length, 1, available, file);
+        length += bytes_read;
 
-        if (i >= cur_size) {
-            cur_size += step_size;
-            source = realloc(source, sizeof(char) * cur_size);
+        if (bytes_read < available) {
+            if (ferror(file)) {
+                fprintf(stderr, "Unable to read assembly source: %s\n", path);
+                fclose(file);
+                asm_free(source);
+                exit(EXIT_FAILURE);
+            }
+            break;
         }
-    }
-    fclose(file);
 
-    return assemblySource(source, size);
+        capacity += growth_size;
+        source = asm_realloc(source, capacity + 1);
+    }
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Unable to close assembly source: %s\n", path);
+        asm_free(source);
+        exit(EXIT_FAILURE);
+    }
+
+    source[length] = '\0';
+    byte* binary = assemblySource(source, binary_size);
+    asm_free(source);
+    return binary;
 }
 
-static char* stripExtension(char* path) {
-    char* end = path + strlen(path);
-    while (end > path && *end != '.') {
-        --end;
+static char* derive_output_path(const char* input_path) {
+    const char* last_separator = strrchr(input_path, '/');
+    const char* last_dot = strrchr(input_path, '.');
+    size_t stem_length = strlen(input_path);
+
+    if (last_dot != NULL && (last_separator == NULL || last_dot > last_separator)) {
+        stem_length = (size_t)(last_dot - input_path);
     }
 
-    if (end > path) {
-        *end = '\0';
-    }
-
-    return path;
+    char* output_path = asm_malloc(stem_length + sizeof(".bin"));
+    memcpy(output_path, input_path, stem_length);
+    memcpy(output_path + stem_length, ".bin", sizeof(".bin"));
+    return output_path;
 }
 
-static void writeBinary(const char* path, byte* data, size_t size) {
+static void write_binary(const char* path, const byte* data, size_t size) {
     FILE* file = fopen(path, "wb");
-    for (size_t i = 0; i < size; i++) {
-        fputc(data[i], file);
+    if (file == NULL) {
+        fprintf(stderr, "Unable to open output file: %s\n", path);
+        exit(EXIT_FAILURE);
     }
-    fclose(file);
+
+    if (fwrite(data, 1, size, file) != size) {
+        fprintf(stderr, "Unable to write output file: %s\n", path);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    if (fclose(file) != 0) {
+        fprintf(stderr, "Unable to close output file: %s\n", path);
+        exit(EXIT_FAILURE);
+    }
 }
-
-#ifdef DEBUG
-static void test_parser(const char* path) {
-    const size_t step_size = 1024;
-    size_t cur_size = step_size;
-    char* source = (char*) malloc(sizeof(char) * cur_size);
-    size_t i = 0;
-
-    FILE* file = fopen(path, "r");
-    while (!feof(file))
-    {
-        source[i] = (char) fgetc(file);
-        i++;
-
-        if (i >= cur_size)
-        {
-            cur_size += step_size;
-            source = realloc(source, sizeof(char) * cur_size);
-        }
-    }
-    fclose(file);
-
-    struct LexerState lexer;
-    lexer_init(&lexer, source);
-
-    Token* tok = lexer_readToken(&lexer);
-    while (tok != NULL)
-    {
-        token_print(tok);
-        tok = lexer_readToken(&lexer);
-    }
-    free(source);
-
-    printf("======================================\n");
-
-    struct ParserContext parser;
-    parser_init(&parser);
-
-    parser_parse(&parser, tokenStream_new(lexer._tokens));
-    lexer_clear(&lexer);
-
-    struct LineList* ptr = parser.lines;
-    while (NULL != ptr)
-    {
-        line_print(ptr->value);
-        ptr = ptr->next;
-    }
-
-    printf("======================================\n");
-
-    struct AssemblerContext asm_;
-    asm_init(&asm_);
-    asm_processDirectives(&asm_, &parser);
-    parser_clear(&parser);
-
-    ptr = asm_.lines;
-    while (NULL != ptr)
-    {
-        line_print(ptr->value);
-        ptr = ptr->next;
-    }
-
-    asm_processLabels(&asm_);
-
-    size_t size = 0;
-    byte* res = asm_translate(&asm_, &size);
-
-    VirtualMachine vm;
-    vm_initialize(&vm, 1024);
-    vm_loadDump(&vm, res, size);
-    State state = vm_run(&vm);
-    exit(state);
-}
-
-#endif

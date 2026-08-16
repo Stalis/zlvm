@@ -21,7 +21,6 @@ Token* tokenStream_read(TokenStream* stream);
 Token* tokenStream_peek(TokenStream* stream);
 bool tokenStream_isEof(TokenStream* stream);
 
-
 typedef struct LexerState {
     char* source;
     size_t _len;
@@ -43,4 +42,4 @@ Token* lexer_readToken(LexerState*);
 
 void lexer_clear(LexerState* state);
 
-#endif //ZLVM_C_LEXER_H
+#endif // ZLVM_C_LEXER_H
