@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_COMMON_H
 #define ZLVM_C_COMMON_H
 
-#include <cxxabi.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 

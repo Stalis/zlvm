@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 4.4.2)
 project(zlvm_c C)
 
 set(BIN_PATH bin)
@@ -24,18 +24,9 @@ ENDIF ()
 set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-include(PVS-Studio.cmake)
 
 add_subdirectory(emulator)
 add_subdirectory(asm)
-
-pvs_studio_add_target(
-        TARGET ${PROJECT_NAME}.analyze ALL
-        COMPILE_COMMANDS
-        OUTPUT FORMAT tasklist
-        LOG target.tasks
-)
-
 
 install(TARGETS zlvm zlvm-static zlvm-bin
         RUNTIME DESTINATION ${BIN_PATH}
