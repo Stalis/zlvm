@@ -12,7 +12,7 @@ else ()
         set(CMAKE_INSTALL_PREFIX "/usr")
     endif ()
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wold-style-cast")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 endif ()
 
 

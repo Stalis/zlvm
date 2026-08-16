@@ -3,6 +3,15 @@
 
 #include "../../include/Opcode.h"
 
+#define GENERATE_STRING(STRING) #STRING,
+
+static const char* const opcode_strings[] = {
+        FOREACH_OPCODE(GENERATE_STRING)
+};
+
+#undef FOREACH_OPCODE
+#undef GENERATE_STRING
+
 /**
  * Returns opcode mnemonic
  * @param op opcode

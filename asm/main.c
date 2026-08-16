@@ -10,7 +10,9 @@
 #include "asm/Assembler.h"
 #include "src/Memory.h"
 
+#ifdef DEBUG
 static void test_parser(const char* path);
+#endif
 static byte* readSource(const char* path, size_t* size);
 static char* stripExtension(char* path);
 static void writeBinary(const char* path, byte* data, size_t size);

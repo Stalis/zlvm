@@ -3,7 +3,7 @@
 //
 
 #include "../../include/Instruction.h"
-#include <printf.h>
+#include <stdio.h>
 
 void instruction_print(Instruction* i) {
     const char* opcode = opcode_to_string(i->opcode_);

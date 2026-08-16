@@ -10,11 +10,6 @@
 #include "zlvm.h"
 #include "Assembler.h"
 
-inline static void line_to_lower(char* line) {
-    char* p = line;
-    for (; *p; ++p) *p = (char) tolower(*p);
-}
-
 inline static void line_to_upper(char* line) {
     char* p = line;
     for (; *p; ++p) *p = (char) toupper(*p);
