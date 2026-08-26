@@ -5,7 +5,7 @@
 #ifndef ZLVM_C_TOKEN_H
 #define ZLVM_C_TOKEN_H
 
-#include "Types.h"
+#include "../Types.h"
 
 typedef enum TokenType {
     TOK_COMMENT,

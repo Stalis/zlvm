@@ -99,6 +99,9 @@ static void print_state(State state) {
         case S_ERR_STACK_UNDERFLOW:
             printf("Error: Stack underflow");
             break;
+        case S_ERR_DIVISION_BY_ZERO:
+            printf("Error: Division by zero");
+            break;
         case S_ERR_INVALID_CONDITION:
             printf("Error: Invalid condition");
             break;

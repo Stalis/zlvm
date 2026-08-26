@@ -83,6 +83,11 @@ static Statement *parser_read_statement(TokenStream *stream, Token *current) {
                             current->type == TOK_INT_BIN || current->type == TOK_INT_OCT ||
                             current->type == TOK_INT_DEC || current->type == TOK_INT_HEX)) {
         statement->imm = current;
+        current = read_token(stream);
+    }
+
+    if (current != NULL) {
+        ZLASM_TOKEN_CRASH("Unexpected trailing token", current);
     }
 
     return statement;

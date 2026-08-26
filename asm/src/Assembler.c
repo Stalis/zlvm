@@ -20,6 +20,7 @@ static void line_to_upper(char *line) {
 
 static Condition parse_condition(const char *string);
 static Register parse_register(const char *string);
+static void validate_operands(Opcode opcode, Statement *statement);
 
 void asm_init(AssemblerContext *context) {
     context->entry = NULL;
@@ -173,6 +174,7 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
             if (instruction.opcode_ == OPCODE_TOTAL) {
                 ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
             }
+            validate_operands(instruction.opcode_, statement);
 
             instruction.condition_ =
                 statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond->value);
@@ -187,11 +189,18 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
                     if (label == NULL) {
                         ZLASM_TOKEN_CRASH("Unknown label", statement->imm);
                     }
+                    if (label->address > WORD_MAX) {
+                        ZLASM_TOKEN_CRASH("Label address exceeds word size", statement->imm);
+                    }
                     instruction.immediate = (word)label->address;
                 } else if (statement->imm->type == TOK_CHAR_LITERAL) {
                     instruction.immediate = token_get_char_value(statement->imm->value);
                 } else {
-                    instruction.immediate = (word)token_get_int_value(statement->imm);
+                    dword value = token_get_int_value(statement->imm);
+                    if (value > WORD_MAX) {
+                        ZLASM_TOKEN_CRASH("Immediate exceeds word size", statement->imm);
+                    }
+                    instruction.immediate = (word)value;
                 }
             }
 
@@ -236,6 +245,96 @@ static const char *set_label_context(const char *context, const char *label) {
     return result;
 }
 
+static void validate_operands(Opcode opcode, Statement *statement) {
+    int registers = statement->reg1 != NULL ? (statement->reg2 != NULL ? 2 : 1) : 0;
+    int expected_registers;
+    int expected_immediate;
+
+    switch (opcode) {
+        case NOP:
+        case POP:
+        case DUP:
+        case SYSCALL:
+        case RET:
+            expected_registers = 0;
+            expected_immediate = 0;
+            break;
+        case POPR:
+        case PUSHR:
+        case NOT:
+        case INC:
+        case DEC:
+            expected_registers = 1;
+            expected_immediate = 0;
+            break;
+        case PUSHI:
+        case INT:
+        case JMP:
+        case JMPAL:
+            expected_registers = 0;
+            expected_immediate = 1;
+            break;
+        case MOVR:
+        case ADDR:
+        case SUBR:
+        case MULR:
+        case DIVR:
+        case MODR:
+        case ANDR:
+        case ORR:
+        case XORR:
+        case NANDR:
+        case NORR:
+        case CMPR:
+        case CMPSR:
+        case ADDSR:
+        case SUBSR:
+        case MULSR:
+        case DIVSR:
+        case MODSR:
+            expected_registers = 2;
+            expected_immediate = 0;
+            break;
+        case MOVI:
+        case ADDI:
+        case SUBI:
+        case MULI:
+        case DIVI:
+        case MODI:
+        case ANDI:
+        case ORI:
+        case XORI:
+        case NANDI:
+        case NORI:
+        case CMPI:
+        case CMPSI:
+        case ADDSI:
+        case SUBSI:
+        case MULSI:
+        case DIVSI:
+        case MODSI:
+            expected_registers = 1;
+            expected_immediate = 1;
+            break;
+        case LOADB:
+        case STOREB:
+        case LOADH:
+        case STOREH:
+        case LOADW:
+        case STOREW:
+            expected_registers = 2;
+            expected_immediate = -1;
+            break;
+        default:
+            ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
+    }
+
+    if (registers != expected_registers ||
+        (expected_immediate >= 0 && (statement->imm != NULL) != expected_immediate)) {
+        ZLASM_TOKEN_CRASH("Invalid operands", statement->opcode);
+    }
+}
+
 static Condition parse_condition(const char *string) {
 
 #define CHECK(str, code)                                                                           \
@@ -265,6 +364,9 @@ static Condition parse_condition(const char *string) {
 
     CHECK("ss", C_SIGNED_SET);
     CHECK("sc", C_SIGNED_CLEAR);
+
+    CHECK("uh", C_UNSIGNED_HIGHER);
+    CHECK("ul", C_UNSIGNED_LOWER_OR_SAME);
 
     CHECK("gt", C_GREATER);
     CHECK("ge", C_GREATER_OR_EQUALS);

@@ -24,8 +24,8 @@ void vm_write_word(struct VirtualMachine *vm, size_t address, word value);
 dword vm_read_dword(struct VirtualMachine *vm, size_t address);
 void vm_write_dword(struct VirtualMachine *vm, size_t address, dword value);
 
-word vm_pop_word(struct VirtualMachine *vm);
-void vm_push_word(struct VirtualMachine *vm, word value);
+bool vm_pop_word(struct VirtualMachine *vm, word *value);
+bool vm_push_word(struct VirtualMachine *vm, word value);
 
 bool vm_has_no_error(struct VirtualMachine *);
 bool vm_has_state(struct VirtualMachine *, enum State);

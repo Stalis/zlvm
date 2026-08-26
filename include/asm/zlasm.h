@@ -1,7 +1,7 @@
 #ifndef ZLVM_ASM_ZLASM_H
 #define ZLVM_ASM_ZLASM_H
 
-#include "Types.h"
+#include "../Types.h"
 
 /**
  * Assemble a NUL-terminated source buffer.

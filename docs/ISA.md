@@ -16,8 +16,9 @@ currently creates 4 KiB of RAM. The first 256 bytes of RAM are used as stack cap
 | `0x1000` onward | RAM; command-line range is `0x1000`-`0x1fff` |
 | `0x1000`-`0x10ff` | Intended 256-byte stack region |
 
-The VM initializes `pc` to zero, and initializes both `bp` and `sp` to `0x1000`. A push increments
-`sp` by four and then writes a word; a pop reads a word and then decrements `sp` by four.
+The VM initializes `pc` to zero, and initializes both `bp` and `sp` to `0x1000`. The stack pointer
+addresses the next free byte: a push writes a word and then increments `sp` by four; a pop
+decrements `sp` by four and then reads a word.
 
 ## Instruction Encoding
 
@@ -43,7 +44,7 @@ range-checked, and an unknown alias terminates assembly with a diagnostic.
 
 | Index | Alias | Intended role |
 | ---: | --- | --- |
-| 0 | `$zero` | Constant zero; declared read-only, but writes are not currently prevented |
+| 0 | `$zero` | Constant zero; instruction results targeting it are discarded |
 | 1 | `$at` | Assembler temporary |
 | 2 | `$v0` | Procedure result |
 | 3 | `$v1` | Procedure result |
@@ -92,9 +93,9 @@ Arithmetic and comparison operations update the current program status register 
 | `S` | Last ALU operation used a signed variant |
 | `ST` | VM execution state |
 
-Execution states include normal, halted, out of memory, stack overflow, stack underflow, invalid
-condition, and invalid opcode. `S_HALTED` has numeric value zero and is the successful terminal
-state used as the command-line exit code.
+Execution states include normal, halted, out of memory, stack overflow, stack underflow, division
+by zero, invalid condition, and invalid opcode. `S_HALTED` has numeric value zero and is the
+successful terminal state used as the command-line exit code.
 
 ### Conditions
 
@@ -114,8 +115,8 @@ assembler accepts the aliases shown in the third column.
 | 8 | Carry clear / unsigned lower | `cc`, `lo` | Implemented |
 | 9 | Signed-operation flag set | `ss` | Implemented |
 | 10 | Signed-operation flag clear | `sc` | Implemented |
-| 11 | Unsigned higher | No parser spelling (`uh` is printable) | Runtime implemented |
-| 12 | Unsigned lower-or-same | No parser spelling (`ul` is printable) | Runtime implemented |
+| 11 | Unsigned higher | `uh` | Implemented |
+| 12 | Unsigned lower-or-same | `ul` | Implemented |
 | 13 | Signed less-than | `lt` | Implemented as `N != V` |
 | 14 | Signed less-than-or-equal | `le` | Implemented as `Z || (N != V)` |
 | 15 | Signed greater-than | `gt` | Implemented as `!Z && (N == V)` |
@@ -142,13 +143,13 @@ address. All target addresses are byte addresses in ROM.
 | 8 | `ADDR` | `addr rd, rs` | `rd = rd + rs` |
 | 9 | `SUBR` | `subr rd, rs` | `rd = rd - rs` |
 | 10 | `MULR` | `mulr rd, rs` | `rd = rd * rs` |
-| 11 | `DIVR` | `divr rd, rs` | `rd = rd / rs` (no divide-by-zero guard) |
-| 12 | `MODR` | `modr rd, rs` | `rd = rd % rs` (no divide-by-zero guard) |
+| 11 | `DIVR` | `divr rd, rs` | `rd = rd / rs`; zero divisor sets an error state |
+| 12 | `MODR` | `modr rd, rs` | `rd = rd % rs`; zero divisor sets an error state |
 | 13 | `ADDI` | `addi rd, imm` | `rd = rd + imm` |
 | 14 | `SUBI` | `subi rd, imm` | `rd = rd - imm` |
 | 15 | `MULI` | `muli rd, imm` | `rd = rd * imm` |
-| 16 | `DIVI` | `divi rd, imm` | `rd = rd / imm` (no divide-by-zero guard) |
-| 17 | `MODI` | `modi rd, imm` | `rd = rd % imm` (no divide-by-zero guard) |
+| 16 | `DIVI` | `divi rd, imm` | `rd = rd / imm`; zero divisor sets an error state |
+| 17 | `MODI` | `modi rd, imm` | `rd = rd % imm`; zero divisor sets an error state |
 | 18 | `INT` | `int imm` | Invoke an emulator interrupt |
 | 19 | `SYSCALL` | `syscall` | Dispatch using `$sc`; no services implemented |
 | 20 | `JMP` | `jmp imm` | Set `pc` to an absolute byte address |
@@ -165,32 +166,32 @@ address. All target addresses are byte addresses in ROM.
 | 31 | `NORI` | `nori rd, imm` | `rd = ~(rd \| imm)` |
 | 32 | `INC` | `inc rd` | Increment `rd` |
 | 33 | `DEC` | `dec rd` | Decrement `rd` |
-| 34 | `LOADB` | `loadb rd, rs, imm` | Load a byte from `rs + imm` into `rd` |
-| 35 | `STOREB` | `storeb rd, rs, imm` | Store the low byte of `rd` at `rs + imm` |
-| 36 | `LOADH` | `loadh rd, rs, imm` | Load a 16-bit halfword from `rs + imm` |
-| 37 | `STOREH` | `storeh rd, rs, imm` | Store the low halfword of `rd` at `rs + imm` |
-| 38 | `LOADW` | `loadw rd, rs, imm` | Load a 32-bit word from `rs + imm` |
-| 39 | `STOREW` | `storew rd, rs, imm` | Store the word in `rd` at `rs + imm` |
+| 34 | `LOADB` | `loadb rd, rs [, imm]` | Load a byte from `rs + imm` into `rd` |
+| 35 | `STOREB` | `storeb rd, rs [, imm]` | Store the low byte of `rd` at `rs + imm` |
+| 36 | `LOADH` | `loadh rd, rs [, imm]` | Load a 16-bit halfword from `rs + imm` |
+| 37 | `STOREH` | `storeh rd, rs [, imm]` | Store the low halfword of `rd` at `rs + imm` |
+| 38 | `LOADW` | `loadw rd, rs [, imm]` | Load a 32-bit word from `rs + imm` |
+| 39 | `STOREW` | `storew rd, rs [, imm]` | Store the word in `rd` at `rs + imm` |
 | 40 | `JMPAL` | `jmpal imm` | Save the next `pc` in `$lp`, then jump |
 | 41 | `RET` | `ret` | Set `pc` to `$lp` |
 | 42 | `CMPR` | `cmpr rd, rs` | Set flags from unsigned `rd - rs`; discard result |
 | 43 | `CMPI` | `cmpi rd, imm` | Set flags from unsigned `rd - imm`; discard result |
-| 44 | `CMPSR` | `cmpsr rd, rs` | Set flags from intended signed `rd - rs`; discard result |
-| 45 | `CMPSI` | `cmpsi rd, imm` | Set flags from intended signed `rd - imm`; discard result |
-| 46 | `ADDSR` | `addsr rd, rs` | Intended signed `rd = rd + rs` |
-| 47 | `SUBSR` | `subsr rd, rs` | Intended signed `rd = rd - rs` |
-| 48 | `MULSR` | `mulsr rd, rs` | Intended signed `rd = rd * rs` |
-| 49 | `DIVSR` | `divsr rd, rs` | Intended signed `rd = rd / rs` |
-| 50 | `MODSR` | `modsr rd, rs` | Intended signed `rd = rd % rs` |
-| 51 | `ADDSI` | `addsi rd, imm` | Intended signed `rd = rd + imm` |
-| 52 | `SUBSI` | `subsi rd, imm` | Intended signed `rd = rd - imm` |
-| 53 | `MULSI` | `mulsi rd, imm` | Intended signed `rd = rd * imm` |
-| 54 | `DIVSI` | `divsi rd, imm` | Intended signed `rd = rd / imm` |
-| 55 | `MODSI` | `modsi rd, imm` | Intended signed `rd = rd % imm` |
+| 44 | `CMPSR` | `cmpsr rd, rs` | Set flags from signed `rd - rs`; discard result |
+| 45 | `CMPSI` | `cmpsi rd, imm` | Set flags from signed `rd - imm`; discard result |
+| 46 | `ADDSR` | `addsr rd, rs` | Signed `rd = rd + rs` |
+| 47 | `SUBSR` | `subsr rd, rs` | Signed `rd = rd - rs` |
+| 48 | `MULSR` | `mulsr rd, rs` | Signed `rd = rd * rs` |
+| 49 | `DIVSR` | `divsr rd, rs` | Signed `rd = rd / rs` |
+| 50 | `MODSR` | `modsr rd, rs` | Signed `rd = rd % rs` |
+| 51 | `ADDSI` | `addsi rd, imm` | Signed `rd = rd + imm` |
+| 52 | `SUBSI` | `subsi rd, imm` | Signed `rd = rd - imm` |
+| 53 | `MULSI` | `mulsi rd, imm` | Signed `rd = rd * imm` |
+| 54 | `DIVSI` | `divsi rd, imm` | Signed `rd = rd / imm` |
+| 55 | `MODSI` | `modsi rd, imm` | Signed `rd = rd % imm` |
 
-The signed implementations currently convert unsigned register words to a 64-bit signed type
-without explicit 32-bit sign extension. Their negative-value and overflow behavior should be
-treated as incomplete.
+Signed operations explicitly sign-extend 32-bit operands and set `V` when their mathematical result
+does not fit in a signed 32-bit word. Division and modulo by zero leave the destination unchanged
+and set `S_ERR_DIVISION_BY_ZERO`.
 
 ## Interrupts and Syscalls
 
@@ -278,8 +279,6 @@ format in the project roadmap is defined.
 
 - Binary images are compatible only with the compiler/ABI/endianness combination that produced
   the VM until explicit serialization is implemented.
-- Division and modulo do not guard against zero divisors.
-- The zero register is not enforced as read-only.
 - Error reporting often exits immediately rather than returning structured diagnostics.
 
 The prioritized implementation sequence and acceptance criteria are maintained in the

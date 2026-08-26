@@ -102,9 +102,6 @@ case-insensitive because the assembler normalizes them before translation. See t
   dependent on compiler, ABI, and host byte order.
 - Sections, alignment, explicit placement, entry selection, macros, external symbols, and linking
   are incomplete or metadata-only.
-- Unsigned-higher and unsigned-lower-or-same conditions are evaluated by the VM but are not yet
-  accepted by the assembler.
-- Division and modulo instructions do not yet report a VM error for a zero divisor.
 
 ## Roadmap: Running `test.asm`
 
@@ -148,8 +145,7 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
 - [ ] Implement text/data sections, alignment, explicit locations, and entry-point selection.
 - [ ] Define object-file and linker behavior for `.global` and `.extern`. The unused `factorial`
   declaration in `test.asm` does not block Milestones 1 or 2.
-- [ ] Implement macros, the remaining declared conditions, syscall behavior, and structured
-  diagnostics for invalid input.
+- [ ] Implement macros, syscall behavior, and structured diagnostics for invalid input.
 - [ ] Keep the ISA reference and integration tests synchronized with every completed feature.
 
 ## Project Documentation
