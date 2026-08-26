@@ -1,10 +1,10 @@
-CLANG_FORMAT ?= xcrun clang-format
+CLANG_FORMAT ?= clang-format
+SOURCES := $(shell git ls-files -co --exclude-standard '*.c' '*.h')
 
 .PHONY: format format-check
 
 format:
-	find . -type f \( -name '*.c' -o -name '*.h' \) -exec $(CLANG_FORMAT) -i {} +
+	$(CLANG_FORMAT) -i $(SOURCES)
 
 format-check:
-	find . -type f \( -name '*.c' -o -name '*.h' \) \
-		-exec $(CLANG_FORMAT) --dry-run --Werror {} +
+	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES)

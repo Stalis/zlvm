@@ -1,6 +1,6 @@
 #include "Condition.h"
 
-const char* condition_to_string(Condition condition) {
+const char *condition_to_string(Condition condition) {
     switch (condition) {
         case C_UNCONDITIONAL:
             return "un";

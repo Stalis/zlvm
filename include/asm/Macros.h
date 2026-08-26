@@ -8,13 +8,13 @@ typedef struct MacrosContext {
 } MacrosContext;
 
 typedef struct Macros {
-    const char** params;
-    Statement** lines;
+    const char **params;
+    Statement **lines;
 } Macros;
 
 typedef struct MacrosList {
     Macros value;
-    struct MacrosList* next;
+    struct MacrosList *next;
 } MacrosList;
 
 #endif // ZLVM_ASM_MACROS_H

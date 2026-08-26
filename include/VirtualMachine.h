@@ -25,31 +25,31 @@ typedef struct VirtualMachine {
     ALU _alu;
     Value _registers[ZLVM_REGISTER_COUNT];
     byte _rom[ZLVM_ROM_SIZE];
-    byte* _memory;
+    byte *_memory;
     size_t _memorySize;
 } VirtualMachine;
 
 /**
  * @brief Initialize virtual machine instance
  */
-void vm_initialize(VirtualMachine* vm, size_t ram_size);
+void vm_initialize(VirtualMachine *vm, size_t ram_size);
 
 /**
  * @brief Release memory owned by a virtual machine instance.
  */
-void vm_destroy(VirtualMachine* vm);
+void vm_destroy(VirtualMachine *vm);
 
 /**
  * @brief Load dump to vm's memory
  * @param program pointer to byte array of dump
  * @param size size of dump
  */
-void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size);
+void vm_loadDump(VirtualMachine *vm, const byte *program, size_t size);
 
 /**
  * @brief Start vm
  * @return exit state of vm
  */
-State vm_run(VirtualMachine* vm);
+State vm_run(VirtualMachine *vm);
 
 #endif // ZLVM_C_VIRTUALMACHINE_H

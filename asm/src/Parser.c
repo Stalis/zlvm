@@ -2,15 +2,15 @@
 
 #include "Memory.h"
 
-static Token* read_token(TokenStream* stream) {
+static Token *read_token(TokenStream *stream) {
     if (tokenStream_isEof(stream)) {
         return NULL;
     }
     return tokenStream_read(stream);
 }
 
-static void append_token(TokenList** first, TokenList** last, Token* token) {
-    TokenList* item = asm_calloc(1, sizeof *item);
+static void append_token(TokenList **first, TokenList **last, Token *token) {
+    TokenList *item = asm_calloc(1, sizeof *item);
     item->value = token;
 
     if (*first == NULL) {
@@ -21,14 +21,14 @@ static void append_token(TokenList** first, TokenList** last, Token* token) {
     *last = item;
 }
 
-void parser_init(ParserContext* context) {
+void parser_init(ParserContext *context) {
     context->lines = asm_calloc(1, sizeof *context->lines);
     line_list_init(context->lines);
     context->lines_count = 0;
 }
 
-static TokenStream* parser_get_line(TokenStream* stream) {
-    Token* current = read_token(stream);
+static TokenStream *parser_get_line(TokenStream *stream) {
+    Token *current = read_token(stream);
     while (current != NULL && (current->type == TOK_COMMENT || current->type == TOK_NEWLINE)) {
         current = read_token(stream);
     }
@@ -37,8 +37,8 @@ static TokenStream* parser_get_line(TokenStream* stream) {
         return NULL;
     }
 
-    TokenList* first = NULL;
-    TokenList* last = NULL;
+    TokenList *first = NULL;
+    TokenList *last = NULL;
     append_token(&first, &last, current);
     current = read_token(stream);
 
@@ -59,8 +59,8 @@ static TokenStream* parser_get_line(TokenStream* stream) {
     return tokenStream_new(first);
 }
 
-static Statement* parser_read_statement(TokenStream* stream, Token* current) {
-    Statement* statement = asm_malloc(sizeof *statement);
+static Statement *parser_read_statement(TokenStream *stream, Token *current) {
+    Statement *statement = asm_malloc(sizeof *statement);
     statement_init(statement);
     statement->opcode = current;
 
@@ -83,13 +83,18 @@ static Statement* parser_read_statement(TokenStream* stream, Token* current) {
                             current->type == TOK_INT_BIN || current->type == TOK_INT_OCT ||
                             current->type == TOK_INT_DEC || current->type == TOK_INT_HEX)) {
         statement->imm = current;
+        current = read_token(stream);
+    }
+
+    if (current != NULL) {
+        ZLASM_TOKEN_CRASH("Unexpected trailing token", current);
     }
 
     return statement;
 }
 
-static Directive* parser_read_directive(TokenStream* stream, Token* current) {
-    Directive* directive = asm_malloc(sizeof *directive);
+static Directive *parser_read_directive(TokenStream *stream, Token *current) {
+    Directive *directive = asm_malloc(sizeof *directive);
     if (!directive_init(directive, current)) {
         ZLASM_TOKEN_CRASH("Unknown directive", current);
     }
@@ -100,9 +105,9 @@ static Directive* parser_read_directive(TokenStream* stream, Token* current) {
     return directive;
 }
 
-static Line* parser_read_line(TokenStream* stream) {
-    Line* line = asm_calloc(1, sizeof *line);
-    Token* current = read_token(stream);
+static Line *parser_read_line(TokenStream *stream) {
+    Line *line = asm_calloc(1, sizeof *line);
+    Token *current = read_token(stream);
 
     if (current != NULL && current->type == TOK_LABEL_INIT) {
         line->label = current->value;
@@ -129,13 +134,13 @@ static Line* parser_read_line(TokenStream* stream) {
     return line;
 }
 
-void parser_addLine(ParserContext* context, Line* line) {
+void parser_addLine(ParserContext *context, Line *line) {
     line_list_add(context->lines, line);
     context->lines_count++;
 }
 
-void parser_parse(ParserContext* context, TokenStream* stream) {
-    TokenStream* line_stream = parser_get_line(stream);
+void parser_parse(ParserContext *context, TokenStream *stream) {
+    TokenStream *line_stream = parser_get_line(stream);
     while (line_stream != NULL) {
         parser_addLine(context, parser_read_line(line_stream));
         asm_free(line_stream);
@@ -144,7 +149,7 @@ void parser_parse(ParserContext* context, TokenStream* stream) {
     asm_free(stream);
 }
 
-void parser_clear(ParserContext* context) {
+void parser_clear(ParserContext *context) {
     line_list_free(context->lines);
     context->lines = NULL;
     context->lines_count = 0;

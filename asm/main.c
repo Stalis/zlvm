@@ -5,11 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static byte* read_source(const char* path, size_t* binary_size);
-static char* derive_output_path(const char* input_path);
-static void write_binary(const char* path, const byte* data, size_t size);
+static byte *read_source(const char *path, size_t *binary_size);
+static char *derive_output_path(const char *input_path);
+static void write_binary(const char *path, const byte *data, size_t size);
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     if (argc != 2 && argc != 4) {
         fprintf(stderr, "Usage: %s <assembly-file> [-o <output-file>]\n", argv[0]);
         return EXIT_FAILURE;
@@ -20,11 +20,11 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    char* derived_path = NULL;
-    const char* output_path = argc == 4 ? argv[3] : (derived_path = derive_output_path(argv[1]));
+    char *derived_path = NULL;
+    const char *output_path = argc == 4 ? argv[3] : (derived_path = derive_output_path(argv[1]));
 
     size_t binary_size = 0;
-    byte* binary = read_source(argv[1], &binary_size);
+    byte *binary = read_source(argv[1], &binary_size);
     write_binary(output_path, binary, binary_size);
 
     asm_free(binary);
@@ -32,13 +32,13 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
 }
 
-static byte* read_source(const char* path, size_t* binary_size) {
+static byte *read_source(const char *path, size_t *binary_size) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t length = 0;
-    char* source = asm_malloc(capacity + 1);
+    char *source = asm_malloc(capacity + 1);
 
-    FILE* file = fopen(path, "rb");
+    FILE *file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Unable to open assembly source: %s\n", path);
         exit(EXIT_FAILURE);
@@ -70,28 +70,28 @@ static byte* read_source(const char* path, size_t* binary_size) {
     }
 
     source[length] = '\0';
-    byte* binary = assemblySource(source, binary_size);
+    byte *binary = assemblySource(source, binary_size);
     asm_free(source);
     return binary;
 }
 
-static char* derive_output_path(const char* input_path) {
-    const char* last_separator = strrchr(input_path, '/');
-    const char* last_dot = strrchr(input_path, '.');
+static char *derive_output_path(const char *input_path) {
+    const char *last_separator = strrchr(input_path, '/');
+    const char *last_dot = strrchr(input_path, '.');
     size_t stem_length = strlen(input_path);
 
     if (last_dot != NULL && (last_separator == NULL || last_dot > last_separator)) {
         stem_length = (size_t)(last_dot - input_path);
     }
 
-    char* output_path = asm_malloc(stem_length + sizeof(".bin"));
+    char *output_path = asm_malloc(stem_length + sizeof(".bin"));
     memcpy(output_path, input_path, stem_length);
     memcpy(output_path + stem_length, ".bin", sizeof(".bin"));
     return output_path;
 }
 
-static void write_binary(const char* path, const byte* data, size_t size) {
-    FILE* file = fopen(path, "wb");
+static void write_binary(const char *path, const byte *data, size_t size) {
+    FILE *file = fopen(path, "wb");
     if (file == NULL) {
         fprintf(stderr, "Unable to open output file: %s\n", path);
         exit(EXIT_FAILURE);

@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static byte* read_source(const char* path, size_t* binary_size);
+static byte *read_source(const char *path, size_t *binary_size);
 static void print_state(State state);
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     const size_t memory_size = 4096;
 
     printf("Size of Instruction: %zu bytes\n", sizeof(Instruction));
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     }
 
     size_t binary_size = 0;
-    byte* binary = read_source(argv[1], &binary_size);
+    byte *binary = read_source(argv[1], &binary_size);
 
     VirtualMachine vm = {0};
     vm_initialize(&vm, memory_size);
@@ -42,13 +42,13 @@ int main(int argc, char** argv) {
     return state;
 }
 
-static byte* read_source(const char* path, size_t* binary_size) {
+static byte *read_source(const char *path, size_t *binary_size) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t length = 0;
-    char* source = vm_malloc(capacity + 1);
+    char *source = vm_malloc(capacity + 1);
 
-    FILE* file = fopen(path, "rb");
+    FILE *file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Unable to open assembly source: %s\n", path);
         exit(EXIT_FAILURE);
@@ -80,7 +80,7 @@ static byte* read_source(const char* path, size_t* binary_size) {
     }
 
     source[length] = '\0';
-    byte* binary = assemblySource(source, binary_size);
+    byte *binary = assemblySource(source, binary_size);
     free(source);
     return binary;
 }
@@ -98,6 +98,9 @@ static void print_state(State state) {
             break;
         case S_ERR_STACK_UNDERFLOW:
             printf("Error: Stack underflow");
+            break;
+        case S_ERR_DIVISION_BY_ZERO:
+            printf("Error: Division by zero");
             break;
         case S_ERR_INVALID_CONDITION:
             printf("Error: Invalid condition");

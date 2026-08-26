@@ -12,16 +12,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void line_to_upper(char* line) {
-    for (char* character = line; *character != '\0'; character++) {
+static void line_to_upper(char *line) {
+    for (char *character = line; *character != '\0'; character++) {
         *character = (char)toupper((unsigned char)*character);
     }
 }
 
-static Condition parse_condition(const char* string);
-static Register parse_register(const char* string);
+static Condition parse_condition(const char *string);
+static Register parse_register(const char *string);
+static void validate_operands(Opcode opcode, Statement *statement);
 
-void asm_init(AssemblerContext* context) {
+void asm_init(AssemblerContext *context) {
     context->entry = NULL;
     context->externals = NULL;
     context->externalsCount = 0;
@@ -31,25 +32,25 @@ void asm_init(AssemblerContext* context) {
     context->lines = NULL;
 }
 
-static const char* const ASM_CONTEXT_DELIMITER = ".";
+static const char *const ASM_CONTEXT_DELIMITER = ".";
 
-static const char* set_label_context(const char* context, const char* label);
+static const char *set_label_context(const char *context, const char *label);
 
-void asm_processDirectives(AssemblerContext* context, ParserContext* parser) {
-    LineList* last = NULL;
-    LineStream* stream = lineStream_new(parser->lines);
+void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
+    LineList *last = NULL;
+    LineStream *stream = lineStream_new(parser->lines);
     parser->lines = NULL;
     parser->lines_count = 0;
-    Line* line = lineStream_read(stream);
-    const char* procedure_context = NULL;
+    Line *line = lineStream_read(stream);
+    const char *procedure_context = NULL;
 
     while (line != NULL) {
         if (procedure_context != NULL && line->label != NULL) {
-            line->label = (char*)set_label_context(procedure_context, line->label);
+            line->label = (char *)set_label_context(procedure_context, line->label);
         }
         if (line->type == L_DIR) {
             if (is_data_directive(line->dir->type)) {
-                Directive* dir = line->dir;
+                Directive *dir = line->dir;
                 line->type = L_RAW;
                 line->raw = asm_calloc(1, sizeof(struct RawData));
                 line->raw->data = directive_get_raw_data(dir, &line->raw->size);
@@ -117,28 +118,28 @@ void asm_processDirectives(AssemblerContext* context, ParserContext* parser) {
     asm_free(stream);
 }
 
-void asm_addGlobal(AssemblerContext* context, const char* symbol) {
+void asm_addGlobal(AssemblerContext *context, const char *symbol) {
     if (context->globals == NULL) {
-        context->globals = asm_malloc(sizeof(const char*));
+        context->globals = asm_malloc(sizeof(const char *));
     } else {
         context->globals =
-            asm_realloc(context->globals, sizeof(const char*) * (context->globalsCount + 1));
+            asm_realloc(context->globals, sizeof(const char *) * (context->globalsCount + 1));
     }
     context->globals[context->globalsCount++] = symbol;
 }
 
-void asm_addExternal(AssemblerContext* context, const char* symbol) {
+void asm_addExternal(AssemblerContext *context, const char *symbol) {
     if (context->externals == NULL) {
-        context->externals = asm_malloc(sizeof(const char*));
+        context->externals = asm_malloc(sizeof(const char *));
     } else {
         context->externals =
-            asm_realloc(context->externals, sizeof(const char*) * (context->externalsCount + 1));
+            asm_realloc(context->externals, sizeof(const char *) * (context->externalsCount + 1));
     }
     context->externals[context->externalsCount++] = symbol;
 }
 
-void asm_processLabels(AssemblerContext* context) {
-    LineList* last = context->lines;
+void asm_processLabels(AssemblerContext *context) {
+    LineList *last = context->lines;
     context->labels = asm_calloc(1, sizeof(LabelTable));
     size_t address = 0;
 
@@ -155,24 +156,25 @@ void asm_processLabels(AssemblerContext* context) {
     }
 }
 
-byte* asm_translate(AssemblerContext* context, size_t* output_size) {
+byte *asm_translate(AssemblerContext *context, size_t *output_size) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t offset = 0;
-    byte* result = asm_calloc(capacity, sizeof *result);
+    byte *result = asm_calloc(capacity, sizeof *result);
 
-    for (LineList* current = context->lines; current != NULL; current = current->next) {
-        const byte* data = NULL;
+    for (LineList *current = context->lines; current != NULL; current = current->next) {
+        const byte *data = NULL;
         size_t data_size = 0;
         Instruction instruction = {0};
 
         if (current->value->type == L_STMT) {
-            Statement* statement = current->value->stmt;
+            Statement *statement = current->value->stmt;
             line_to_upper(statement->opcode->value);
             instruction.opcode_ = string_to_opcode(statement->opcode->value);
             if (instruction.opcode_ == OPCODE_TOTAL) {
                 ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
             }
+            validate_operands(instruction.opcode_, statement);
 
             instruction.condition_ =
                 statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond->value);
@@ -183,19 +185,26 @@ byte* asm_translate(AssemblerContext* context, size_t* output_size) {
 
             if (statement->imm != NULL) {
                 if (statement->imm->type == TOK_LABEL_USE) {
-                    LabelInfo* label = labelInfo_getIfExist(context->labels, statement->imm->value);
+                    LabelInfo *label = labelInfo_getIfExist(context->labels, statement->imm->value);
                     if (label == NULL) {
                         ZLASM_TOKEN_CRASH("Unknown label", statement->imm);
+                    }
+                    if (label->address > WORD_MAX) {
+                        ZLASM_TOKEN_CRASH("Label address exceeds word size", statement->imm);
                     }
                     instruction.immediate = (word)label->address;
                 } else if (statement->imm->type == TOK_CHAR_LITERAL) {
                     instruction.immediate = token_get_char_value(statement->imm->value);
                 } else {
-                    instruction.immediate = (word)token_get_int_value(statement->imm);
+                    dword value = token_get_int_value(statement->imm);
+                    if (value > WORD_MAX) {
+                        ZLASM_TOKEN_CRASH("Immediate exceeds word size", statement->imm);
+                    }
+                    instruction.immediate = (word)value;
                 }
             }
 
-            data = (const byte*)&instruction;
+            data = (const byte *)&instruction;
             data_size = sizeof instruction;
         } else if (current->value->type == L_RAW) {
             data = current->value->raw->data;
@@ -226,17 +235,107 @@ byte* asm_translate(AssemblerContext* context, size_t* output_size) {
     return result;
 }
 
-static const char* set_label_context(const char* context, const char* label) {
+static const char *set_label_context(const char *context, const char *label) {
     if (strlen(label) == 0) {
         return asm_strdup(context);
     }
     size_t size = strlen(context) + strlen(ASM_CONTEXT_DELIMITER) + strlen(label) + 1;
-    char* result = asm_malloc(size);
+    char *result = asm_malloc(size);
     snprintf(result, size, "%s%s%s", context, ASM_CONTEXT_DELIMITER, label);
     return result;
 }
 
-static Condition parse_condition(const char* string) {
+static void validate_operands(Opcode opcode, Statement *statement) {
+    int registers = statement->reg1 != NULL ? (statement->reg2 != NULL ? 2 : 1) : 0;
+    int expected_registers;
+    int expected_immediate;
+
+    switch (opcode) {
+        case NOP:
+        case POP:
+        case DUP:
+        case SYSCALL:
+        case RET:
+            expected_registers = 0;
+            expected_immediate = 0;
+            break;
+        case POPR:
+        case PUSHR:
+        case NOT:
+        case INC:
+        case DEC:
+            expected_registers = 1;
+            expected_immediate = 0;
+            break;
+        case PUSHI:
+        case INT:
+        case JMP:
+        case JMPAL:
+            expected_registers = 0;
+            expected_immediate = 1;
+            break;
+        case MOVR:
+        case ADDR:
+        case SUBR:
+        case MULR:
+        case DIVR:
+        case MODR:
+        case ANDR:
+        case ORR:
+        case XORR:
+        case NANDR:
+        case NORR:
+        case CMPR:
+        case CMPSR:
+        case ADDSR:
+        case SUBSR:
+        case MULSR:
+        case DIVSR:
+        case MODSR:
+            expected_registers = 2;
+            expected_immediate = 0;
+            break;
+        case MOVI:
+        case ADDI:
+        case SUBI:
+        case MULI:
+        case DIVI:
+        case MODI:
+        case ANDI:
+        case ORI:
+        case XORI:
+        case NANDI:
+        case NORI:
+        case CMPI:
+        case CMPSI:
+        case ADDSI:
+        case SUBSI:
+        case MULSI:
+        case DIVSI:
+        case MODSI:
+            expected_registers = 1;
+            expected_immediate = 1;
+            break;
+        case LOADB:
+        case STOREB:
+        case LOADH:
+        case STOREH:
+        case LOADW:
+        case STOREW:
+            expected_registers = 2;
+            expected_immediate = -1;
+            break;
+        default:
+            ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
+    }
+
+    if (registers != expected_registers ||
+        (expected_immediate >= 0 && (statement->imm != NULL) != expected_immediate)) {
+        ZLASM_TOKEN_CRASH("Invalid operands", statement->opcode);
+    }
+}
+
+static Condition parse_condition(const char *string) {
 
 #define CHECK(str, code)                                                                           \
     if (strcmp(string, str) == 0) {                                                                \
@@ -266,6 +365,9 @@ static Condition parse_condition(const char* string) {
     CHECK("ss", C_SIGNED_SET);
     CHECK("sc", C_SIGNED_CLEAR);
 
+    CHECK("uh", C_UNSIGNED_HIGHER);
+    CHECK("ul", C_UNSIGNED_LOWER_OR_SAME);
+
     CHECK("gt", C_GREATER);
     CHECK("ge", C_GREATER_OR_EQUALS);
     CHECK("lt", C_LESS);
@@ -275,13 +377,13 @@ static Condition parse_condition(const char* string) {
 #undef CHECK
 }
 
-static Register parse_register(const char* string) {
+static Register parse_register(const char *string) {
     if (string == NULL) {
         return R_ZERO;
     }
 
     if (string[0] == 'r') {
-        char* end = NULL;
+        char *end = NULL;
         unsigned long index = strtoul(string + 1, &end, 10);
         if (*end != '\0' || index >= R_TOTAL) {
             ZLASM_CRASH("Invalid numeric register");

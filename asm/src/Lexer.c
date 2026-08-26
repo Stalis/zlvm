@@ -29,39 +29,39 @@ static bool is_dec_char(char character);
 static bool is_oct_char(char character);
 static bool is_bin_char(char character);
 
-static void remove_digit_delimiters(char* string, size_t size);
+static void remove_digit_delimiters(char *string, size_t size);
 
-static void token_list_add(struct TokenList*, struct Token*);
-static void token_list_free(struct TokenList*);
+static void token_list_add(struct TokenList *, struct Token *);
+static void token_list_free(struct TokenList *);
 
-TokenStream* tokenStream_new(TokenList* list) {
-    TokenStream* stream = asm_malloc(sizeof *stream);
+TokenStream *tokenStream_new(TokenList *list) {
+    TokenStream *stream = asm_malloc(sizeof *stream);
     stream->_first = list;
     return stream;
 }
 
-Token* tokenStream_read(TokenStream* stream) {
+Token *tokenStream_read(TokenStream *stream) {
     if (stream->_first == NULL) {
         return NULL;
     }
-    Token* token = stream->_first->value;
+    Token *token = stream->_first->value;
     stream->_first->value = NULL;
     stream->_first = stream->_first->next;
     return token;
 }
 
-bool tokenStream_isEof(TokenStream* stream) {
+bool tokenStream_isEof(TokenStream *stream) {
     return stream->_first == NULL || stream->_first->value == NULL;
 }
 
-Token* tokenStream_peek(TokenStream* stream) {
+Token *tokenStream_peek(TokenStream *stream) {
     if (stream->_first == NULL) {
         return NULL;
     }
     return stream->_first->value;
 }
 
-void lexer_init(LexerState* state, char* source) {
+void lexer_init(LexerState *state, char *source) {
     state->_tokens = asm_calloc(1, sizeof *state->_tokens);
     state->source = source;
     state->_len = strlen(source);
@@ -70,11 +70,11 @@ void lexer_init(LexerState* state, char* source) {
     state->col = 1;
 }
 
-char lexer_peekChar(LexerState* state) {
+char lexer_peekChar(LexerState *state) {
     return state->source[state->pos];
 }
 
-char lexer_nextChar(LexerState* state) {
+char lexer_nextChar(LexerState *state) {
     if (state->pos >= state->_len) {
         return 0;
     }
@@ -89,19 +89,19 @@ char lexer_nextChar(LexerState* state) {
     return value;
 }
 
-char* lexer_ahead(LexerState* state) {
+char *lexer_ahead(LexerState *state) {
     return state->source + state->pos;
 }
 
-Token* lexer_readToken(LexerState* state) {
+Token *lexer_readToken(LexerState *state) {
 #define CURRENT (lexer_ahead(state))
 
-    char* first;
-    char* last = NULL;
+    char *first;
+    char *last = NULL;
     size_t value_size;
     char c = *CURRENT;
     enum TokenType type;
-    struct Token* result;
+    struct Token *result;
 
     size_t position = state->pos;
     size_t line = state->line;
@@ -270,8 +270,8 @@ Token* lexer_readToken(LexerState* state) {
 #undef CURRENT
 }
 
-static void token_list_add(TokenList* list, Token* token) {
-    TokenList* last = list;
+static void token_list_add(TokenList *list, Token *token) {
+    TokenList *last = list;
     if (list->value == NULL) {
         list->value = token;
     } else {
@@ -307,7 +307,7 @@ static bool is_bin_char(char character) {
     return (character >= '0' && character <= '1') || character == DIGIT_DELIMITER;
 }
 
-static void remove_digit_delimiters(char* string, size_t size) {
+static void remove_digit_delimiters(char *string, size_t size) {
     size_t output_index = 0;
     for (size_t input_index = 0; input_index < size; input_index++) {
         if (string[input_index] != DIGIT_DELIMITER) {
@@ -317,7 +317,7 @@ static void remove_digit_delimiters(char* string, size_t size) {
     string[output_index] = '\0';
 }
 
-static void token_list_free(struct TokenList* list) {
+static void token_list_free(struct TokenList *list) {
     if (list->next != NULL) {
         token_list_free(list->next);
     }
@@ -327,7 +327,7 @@ static void token_list_free(struct TokenList* list) {
     asm_free(list);
 }
 
-void lexer_clear(LexerState* state) {
+void lexer_clear(LexerState *state) {
     if (state != NULL && state->_tokens != NULL) {
         token_list_free(state->_tokens);
         state->_tokens = NULL;

@@ -34,7 +34,7 @@ typedef enum DirectiveType {
 typedef struct Directive {
     DirectiveType type;
     size_t argc;
-    Token** argv;
+    Token **argv;
 } Directive;
 
 /**
@@ -42,23 +42,23 @@ typedef struct Directive {
  *          If name token is valid, sets directive.type
  * @return  `true` if directive name is valid, else returns `false`
  */
-bool directive_init(Directive*, Token* name);
+bool directive_init(Directive *, Token *name);
 
 /**
  * @brief Free memory, allocated for directive
  */
-void directive_free(Directive*);
+void directive_free(Directive *);
 
 /**
  * @brief Adds argument token to directive statement
  */
-void directive_add_arg(Directive*, Token*);
+void directive_add_arg(Directive *, Token *);
 
 /**
  * @brief Returns pointer to data directive raw data
  * @param output_size receives the emitted data size
  */
-uint8_t* directive_get_raw_data(Directive* directive, size_t* output_size);
+uint8_t *directive_get_raw_data(Directive *directive, size_t *output_size);
 
 /**
  * @param t type of directive

@@ -3,7 +3,7 @@
 
 #include "Statement.h"
 
-void statement_init(Statement* statement) {
+void statement_init(Statement *statement) {
     statement->opcode = NULL;
     statement->cond = NULL;
     statement->reg1 = NULL;

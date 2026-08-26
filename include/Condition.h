@@ -26,6 +26,6 @@ typedef enum Condition {
     C_TOTAL,
 } Condition;
 
-const char* condition_to_string(Condition condition);
+const char *condition_to_string(Condition condition);
 
 #endif // ZLVM_C_CONDITION_H

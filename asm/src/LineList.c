@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-static LineList* line_list_get_last(LineList* list) {
+static LineList *line_list_get_last(LineList *list) {
     assert(list != NULL);
     while (list->next != NULL) {
         list = list->next;
@@ -16,12 +16,12 @@ static LineList* line_list_get_last(LineList* list) {
     return list;
 }
 
-void line_list_init(LineList* list) {
+void line_list_init(LineList *list) {
     list->value = NULL;
     list->next = NULL;
 }
 
-void line_list_add(LineList* list, Line* line) {
+void line_list_add(LineList *list, Line *line) {
     list = line_list_get_last(list);
     if (list->value == NULL) {
         list->value = line;
@@ -32,7 +32,7 @@ void line_list_add(LineList* list, Line* line) {
     list->next->value = line;
 }
 
-void line_list_free(LineList* list) {
+void line_list_free(LineList *list) {
     if (list != NULL) {
         if (list->value != NULL) {
             asm_free(list->value);
@@ -44,7 +44,7 @@ void line_list_free(LineList* list) {
     }
 }
 
-void line_print(Line* line) {
+void line_print(Line *line) {
     printf("%s: ", line->label);
     if (line->type == L_NONE) {
         printf("NONE");
@@ -72,20 +72,20 @@ void line_print(Line* line) {
     printf("\n");
 }
 
-LineStream* lineStream_new(LineList* list) {
-    LineStream* stream = asm_malloc(sizeof *stream);
+LineStream *lineStream_new(LineList *list) {
+    LineStream *stream = asm_malloc(sizeof *stream);
     stream->first = list;
     return stream;
 }
 
-Line* lineStream_read(LineStream* stream) {
+Line *lineStream_read(LineStream *stream) {
     if (stream->first == NULL) {
         return NULL;
     }
 
-    LineList* item = stream->first;
+    LineList *item = stream->first;
     stream->first = item->next;
-    Line* line = item->value;
+    Line *line = item->value;
     asm_free(item);
     return line;
 }

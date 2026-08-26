@@ -1,41 +1,46 @@
 cmake_minimum_required(VERSION 4.4.2)
-project(zlvm_c C)
 
-set(BIN_PATH bin)
-set(LIB_PATH lib)
-set(INCLUDE_PATH include/zlvm)
+project(zlvm VERSION 0.1.0 LANGUAGES C)
 
-if (MSVC)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-else ()
-    if (NOT APPLE)
-        set(CMAKE_INSTALL_PREFIX "/usr")
-    endif ()
+include(CTest)
 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
-endif ()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(ZLVM_BIN_PATH bin)
+set(ZLVM_LIB_PATH lib)
+set(ZLVM_INCLUDE_PATH include/zlvm)
 
-IF (CMAKE_BUILD_TYPE MATCHES DEBUG)
-    set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_LIST_DIR}/install/zlvm/)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG")
-ENDIF ()
+function(zlvm_configure_target target_name)
+    target_compile_features(${target_name} PRIVATE c_std_11)
+    target_compile_definitions(${target_name} PRIVATE $<$<CONFIG:Debug>:DEBUG>)
 
-set(CMAKE_C_STANDARD 11)
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE /W4)
+        target_compile_definitions(${target_name} PRIVATE _CRT_SECURE_NO_WARNINGS)
+    else()
+        target_compile_options(${target_name} PRIVATE -Wall -Wextra)
+    endif()
+endfunction()
 
 add_subdirectory(emulator)
 add_subdirectory(asm)
 
-install(TARGETS zlvm zlvm-static zlvm-bin
-        RUNTIME DESTINATION ${BIN_PATH}
-        LIBRARY DESTINATION ${LIB_PATH}
-        ARCHIVE DESTINATION ${LIB_PATH}
-        PUBLIC_HEADER DESTINATION ${INCLUDE_PATH})
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
-install(TARGETS zlasm zlasm-static zlasm-bin
-        RUNTIME DESTINATION ${BIN_PATH}
-        LIBRARY DESTINATION ${LIB_PATH}
-        ARCHIVE DESTINATION ${LIB_PATH}
-        PUBLIC_HEADER DESTINATION ${INCLUDE_PATH}/asm)
+install(
+    TARGETS zlvm zlvm-static zlvm-bin
+    RUNTIME DESTINATION ${ZLVM_BIN_PATH}
+    LIBRARY DESTINATION ${ZLVM_LIB_PATH}
+    ARCHIVE DESTINATION ${ZLVM_LIB_PATH}
+    PUBLIC_HEADER DESTINATION ${ZLVM_INCLUDE_PATH}
+)
+
+install(
+    TARGETS zlasm zlasm-static zlasm-bin
+    RUNTIME DESTINATION ${ZLVM_BIN_PATH}
+    LIBRARY DESTINATION ${ZLVM_LIB_PATH}
+    ARCHIVE DESTINATION ${ZLVM_LIB_PATH}
+    PUBLIC_HEADER DESTINATION ${ZLVM_INCLUDE_PATH}/asm
+)

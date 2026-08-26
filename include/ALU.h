@@ -54,8 +54,8 @@ typedef struct ALU {
     ALUFlags flags_;
 } ALU;
 
-void alu_setFlags(ALU* alu);
-void alu_compute(ALU* alu);
-void alu_reset(ALU* alu);
+void alu_setFlags(ALU *alu);
+void alu_compute(ALU *alu);
+void alu_reset(ALU *alu);
 
 #endif // ZLVM_C_ALU_H

@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char* get_token_type_name(TokenType type);
+static const char *get_token_type_name(TokenType type);
 
-void token_print(Token* token) {
-    const char* format = token->type == TOK_NEWLINE ? "(%4zu:%3zu:%2zu) %12s[%2zu]\n"
+void token_print(Token *token) {
+    const char *format = token->type == TOK_NEWLINE ? "(%4zu:%3zu:%2zu) %12s[%2zu]\n"
                                                     : "(%4zu:%3zu:%2zu) %12s[%2zu] %s\n";
     if (token->type == TOK_NEWLINE) {
         fprintf(stdout, format, token->pos, token->line, token->col,
@@ -19,7 +19,7 @@ void token_print(Token* token) {
     }
 }
 
-void token_free(Token* token) {
+void token_free(Token *token) {
     if (token == NULL) {
         return;
     }
@@ -27,7 +27,7 @@ void token_free(Token* token) {
     asm_free(token);
 }
 
-static const char* get_token_type_name(TokenType type) {
+static const char *get_token_type_name(TokenType type) {
     switch (type) {
         case TOK_COMMENT:
             return "COMMENT";
@@ -62,7 +62,7 @@ static const char* get_token_type_name(TokenType type) {
     }
 }
 
-dword token_get_int_value(Token* token) {
+dword token_get_int_value(Token *token) {
     switch (token->type) {
         case TOK_INT_HEX:
             return strtoull(token->value, NULL, 16);
@@ -77,7 +77,7 @@ dword token_get_int_value(Token* token) {
     }
 }
 
-char token_get_char_value(char* value) {
+char token_get_char_value(char *value) {
     if (value[0] != '\\') {
         return value[0];
     }
@@ -104,20 +104,20 @@ char token_get_char_value(char* value) {
     }
 }
 
-byte* token_get_string_value(char* value, size_t* output_size) {
+byte *token_get_string_value(char *value, size_t *output_size) {
     *output_size = strlen(value);
-    byte* result = asm_malloc(*output_size);
+    byte *result = asm_malloc(*output_size);
     memcpy(result, value, *output_size);
     return result;
 }
 
-byte* token_get_raw_data(Token* token, size_t* output_size) {
+byte *token_get_raw_data(Token *token, size_t *output_size) {
     switch (token->type) {
         case TOK_STRING_LITERAL:
             return token_get_string_value(token->value, output_size);
         case TOK_CHAR_LITERAL: {
             *output_size = sizeof(byte);
-            byte* result = asm_malloc(*output_size);
+            byte *result = asm_malloc(*output_size);
             *result = (byte)token_get_char_value(token->value);
             return result;
         }
@@ -127,7 +127,7 @@ byte* token_get_raw_data(Token* token, size_t* output_size) {
         case TOK_INT_BIN: {
             dword value = token_get_int_value(token);
             *output_size = sizeof value;
-            byte* result = asm_malloc(*output_size);
+            byte *result = asm_malloc(*output_size);
             memcpy(result, &value, *output_size);
             return result;
         }

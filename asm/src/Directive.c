@@ -5,11 +5,11 @@
 #include <assert.h>
 #include <string.h>
 
-static DirectiveType get_directive_type(const Token* token);
-static byte* encode_numeric_data(const Directive* directive, size_t element_size,
-                                 dword maximum_value, size_t* output_size);
+static DirectiveType get_directive_type(const Token *token);
+static byte *encode_numeric_data(const Directive *directive, size_t element_size,
+                                 dword maximum_value, size_t *output_size);
 
-bool directive_init(Directive* directive, Token* name) {
+bool directive_init(Directive *directive, Token *name) {
     assert(directive != NULL);
 
     directive->type = get_directive_type(name);
@@ -18,7 +18,7 @@ bool directive_init(Directive* directive, Token* name) {
     return directive->type != DIR_TOTAL;
 }
 
-void directive_add_arg(Directive* directive, Token* argument) {
+void directive_add_arg(Directive *directive, Token *argument) {
     if (directive == NULL) {
         ZLASM_TOKEN_CRASH("Directive is null", argument);
     }
@@ -29,7 +29,7 @@ void directive_add_arg(Directive* directive, Token* argument) {
     directive->argc = new_count;
 }
 
-void directive_free(Directive* directive) {
+void directive_free(Directive *directive) {
     if (directive == NULL) {
         return;
     }
@@ -37,9 +37,9 @@ void directive_free(Directive* directive) {
     asm_free(directive);
 }
 
-static DirectiveType get_directive_type(const Token* token) {
+static DirectiveType get_directive_type(const Token *token) {
     static const struct {
-        const char* name;
+        const char *name;
         DirectiveType type;
     } directives[] = {
         {"section", DIR_SECTION}, {"global", DIR_GLOBAL},   {"extern", DIR_EXTERN},
@@ -58,7 +58,7 @@ static DirectiveType get_directive_type(const Token* token) {
     return DIR_TOTAL;
 }
 
-byte* directive_get_raw_data(Directive* directive, size_t* output_size) {
+byte *directive_get_raw_data(Directive *directive, size_t *output_size) {
     assert(directive != NULL);
     assert(output_size != NULL);
     assert(is_data_directive(directive->type));
@@ -67,10 +67,10 @@ byte* directive_get_raw_data(Directive* directive, size_t* output_size) {
     switch (directive->type) {
         case DIR_ASCII:
         case DIR_ASCIIZ: {
-            byte* result = NULL;
+            byte *result = NULL;
             for (size_t index = 0; index < directive->argc; index++) {
                 size_t value_size = 0;
-                byte* value = token_get_raw_data(directive->argv[index], &value_size);
+                byte *value = token_get_raw_data(directive->argv[index], &value_size);
                 if (directive->argv[index]->type != TOK_STRING_LITERAL) {
                     value_size = 1;
                 }
@@ -108,18 +108,18 @@ byte* directive_get_raw_data(Directive* directive, size_t* output_size) {
     }
 }
 
-static byte* encode_numeric_data(const Directive* directive, size_t element_size,
-                                 dword maximum_value, size_t* output_size) {
+static byte *encode_numeric_data(const Directive *directive, size_t element_size,
+                                 dword maximum_value, size_t *output_size) {
     if (directive->argc > SIZE_MAX / element_size) {
         ZLASM_CRASH("Data directive is too large");
     }
 
     *output_size = directive->argc * element_size;
-    byte* result = asm_malloc(*output_size);
+    byte *result = asm_malloc(*output_size);
 
     for (size_t index = 0; index < directive->argc; index++) {
         size_t raw_size = 0;
-        byte* raw_data = token_get_raw_data(directive->argv[index], &raw_size);
+        byte *raw_data = token_get_raw_data(directive->argv[index], &raw_size);
         dword value = 0;
         memcpy(&value, raw_data, raw_size < sizeof value ? raw_size : sizeof value);
         asm_free(raw_data);

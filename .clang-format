@@ -13,7 +13,7 @@ AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 IndentCaseLabels: true
-PointerAlignment: Left
+PointerAlignment: Right
 DerivePointerAlignment: false
 SpaceBeforeParens: ControlStatements
 SortIncludes: CaseSensitive

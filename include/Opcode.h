@@ -79,13 +79,13 @@ typedef enum Opcode {
  * @param op opcode
  * @return mnemonic's null-terminated string
  */
-const char* opcode_to_string(Opcode op);
+const char *opcode_to_string(Opcode op);
 
 /**
  * Parse opcode mnemonic
  * @param string mnemonic null-terminated string
  * @return opcode
  */
-Opcode string_to_opcode(const char* string);
+Opcode string_to_opcode(const char *string);
 
 #endif // ZLVM_C_OPCODE_H

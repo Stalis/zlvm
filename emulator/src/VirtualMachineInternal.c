@@ -7,9 +7,13 @@
 #include <stdio.h>
 #include <string.h>
 
+static bool vm_validate_range(VirtualMachine *vm, size_t address, size_t size);
+static bool vm_effective_address(VirtualMachine *vm, word base, word offset, size_t size,
+                                 size_t *address);
+
 #if DEBUG
 
-static inline void print_registers(VirtualMachine* vm, byte columns) {
+static inline void print_registers(VirtualMachine *vm, byte columns) {
     for (word i = 0; i < ZLVM_REGISTER_COUNT; i += columns) {
         for (byte j = 0; j < columns && (i + j) < ZLVM_REGISTER_COUNT; j++) {
             printf("[r%d]:\t%d\t", i + j, vm->_registers[i + j].word_);
@@ -25,7 +29,7 @@ static inline void print_registers(VirtualMachine* vm, byte columns) {
 }
 #endif
 
-void vm_initialize(VirtualMachine* vm, size_t ram_size) {
+void vm_initialize(VirtualMachine *vm, size_t ram_size) {
     for (size_t i = 0; i < ZLVM_REGISTER_COUNT; i++) {
         vm->_registers[i].word_ = 0;
     }
@@ -37,10 +41,11 @@ void vm_initialize(VirtualMachine* vm, size_t ram_size) {
     vm->_memory = vm_calloc(ram_size, sizeof *vm->_memory);
 
     vm->_cpsr.value_.word_ = 0;
+    alu_reset(&vm->_alu);
     vm_set_state(vm, S_NORMAL);
 }
 
-void vm_destroy(VirtualMachine* vm) {
+void vm_destroy(VirtualMachine *vm) {
     if (vm == NULL) {
         return;
     }
@@ -49,7 +54,7 @@ void vm_destroy(VirtualMachine* vm) {
     vm->_memorySize = 0;
 }
 
-void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
+void vm_loadDump(VirtualMachine *vm, const byte *program, size_t size) {
     if (size > ZLVM_ROM_SIZE) {
         vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
         return;
@@ -59,12 +64,15 @@ void vm_loadDump(VirtualMachine* vm, const byte* program, size_t size) {
     }
 }
 
-State vm_run(VirtualMachine* vm) {
+State vm_run(VirtualMachine *vm) {
     vm->_registers[R_PC].word_ = 0; // set to start of rom
     vm->_registers[R_BP].word_ = ZLVM_ROM_SIZE;
     vm->_registers[R_SP].word_ = vm->_registers[R_BP].word_; // set to start of memory
     while (vm_has_no_error(vm) && !vm_has_state(vm, S_HALTED)) {
-        vm_run_instruction(vm, vm_fetch_instruction(vm));
+        Instruction instruction = vm_fetch_instruction(vm);
+        if (vm_has_no_error(vm)) {
+            vm_run_instruction(vm, instruction);
+        }
     }
 #if DEBUG
     print_registers(vm, 4);
@@ -72,11 +80,16 @@ State vm_run(VirtualMachine* vm) {
     return vm_get_state(vm);
 }
 
-byte vm_fetch_byte(VirtualMachine* vm) {
+byte vm_fetch_byte(VirtualMachine *vm) {
     return vm_read_byte(vm, vm->_registers[R_PC].word_++);
 }
 
-Instruction vm_fetch_instruction(VirtualMachine* vm) {
+Instruction vm_fetch_instruction(VirtualMachine *vm) {
+    size_t address = vm->_registers[R_PC].word_;
+    if (!vm_validate_range(vm, address, sizeof(Instruction))) {
+        return (Instruction){0};
+    }
+
     byte bytes[sizeof(Instruction)] = {0};
     for (size_t index = 0; index < sizeof(Instruction); index++) {
         bytes[index] = vm_fetch_byte(vm);
@@ -87,7 +100,9 @@ Instruction vm_fetch_instruction(VirtualMachine* vm) {
     return instruction;
 }
 
-void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
+void vm_run_instruction(VirtualMachine *vm, Instruction instruction) {
+    vm->_registers[R_ZERO].word_ = 0;
+
     if (!vm_check_condition(vm, instruction.condition_)) {
         return;
     }
@@ -98,8 +113,8 @@ void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
         return;
     }
 
-    Value* reg1 = &vm->_registers[instruction.register1];
-    Value* reg2 = &vm->_registers[instruction.register2];
+    Value *reg1 = &vm->_registers[instruction.register1];
+    Value *reg2 = &vm->_registers[instruction.register2];
     word imm = instruction.immediate;
     bool write_alu_result = false;
 
@@ -116,11 +131,14 @@ void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
         case NOP:
             break;
 
-        case POPR:
-            reg1->word_ = vm_pop_word(vm);
-            break;
+        case POPR: {
+            word value;
+            if (vm_pop_word(vm, &value)) {
+                reg1->word_ = value;
+            }
+        } break;
         case POP:
-            vm_pop_word(vm);
+            vm_pop_word(vm, NULL);
             break;
 
         case PUSHR:
@@ -130,9 +148,11 @@ void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
             vm_push_word(vm, imm);
             break;
         case DUP: {
-            word value = vm_pop_word(vm);
-            vm_push_word(vm, value);
-            vm_push_word(vm, value);
+            word value;
+            if (vm_pop_word(vm, &value)) {
+                vm_push_word(vm, value);
+                vm_push_word(vm, value);
+            }
         } break;
 
         case MOVR:
@@ -281,25 +301,43 @@ void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
             write_alu_result = true;
             break;
 
-        case LOADB:
-            reg1->byte_ = vm_read_byte(vm, reg2->word_ + imm);
-            break;
-        case LOADH:
-            reg1->hword_ = vm_read_hword(vm, reg2->word_ + imm);
-            break;
-        case LOADW:
-            reg1->word_ = vm_read_word(vm, reg2->word_ + imm);
-            break;
+        case LOADB: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(byte), &address)) {
+                reg1->byte_ = vm_read_byte(vm, address);
+            }
+        } break;
+        case LOADH: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(hword), &address)) {
+                reg1->hword_ = vm_read_hword(vm, address);
+            }
+        } break;
+        case LOADW: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(word), &address)) {
+                reg1->word_ = vm_read_word(vm, address);
+            }
+        } break;
 
-        case STOREB:
-            vm_write_byte(vm, reg2->word_ + imm, reg1->byte_);
-            break;
-        case STOREH:
-            vm_write_hword(vm, reg2->word_ + imm, reg1->hword_);
-            break;
-        case STOREW:
-            vm_write_word(vm, reg2->word_ + imm, reg1->word_);
-            break;
+        case STOREB: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(byte), &address)) {
+                vm_write_byte(vm, address, reg1->byte_);
+            }
+        } break;
+        case STOREH: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(hword), &address)) {
+                vm_write_hword(vm, address, reg1->hword_);
+            }
+        } break;
+        case STOREW: {
+            size_t address;
+            if (vm_effective_address(vm, reg2->word_, imm, sizeof(word), &address)) {
+                vm_write_word(vm, address, reg1->word_);
+            }
+        } break;
 
         case INT:
             vm_interrupt(vm, imm);
@@ -337,16 +375,18 @@ void vm_run_instruction(VirtualMachine* vm, Instruction instruction) {
             break;
     }
 
-    if (write_alu_result) {
+    if (write_alu_result && vm_has_no_error(vm)) {
         reg1->word_ = vm->_alu.result_;
     }
+
+    vm->_registers[R_ZERO].word_ = 0;
 
     if (vm->_alu.op_ != OP_NOOP) {
         alu_reset(&vm->_alu);
     }
 }
 
-bool vm_check_condition(VirtualMachine* vm, Condition condition) {
+bool vm_check_condition(VirtualMachine *vm, Condition condition) {
     switch (condition) {
         case C_UNCONDITIONAL:
             return true;
@@ -396,119 +436,173 @@ bool vm_check_condition(VirtualMachine* vm, Condition condition) {
     }
 }
 
-byte vm_read_byte(VirtualMachine* vm, size_t address) {
+byte vm_read_byte(VirtualMachine *vm, size_t address) {
+    if (!vm_validate_range(vm, address, sizeof(byte))) {
+        return 0;
+    }
+
     if (address >= ZLVM_ROM_SIZE) {
         address -= ZLVM_ROM_SIZE;
-
-        if (address >= vm->_memorySize) {
-            vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
-            return 0;
-        }
         return vm->_memory[address];
     }
     return vm->_rom[address];
 }
 
-void vm_write_byte(VirtualMachine* vm, size_t address, byte value) {
+void vm_write_byte(VirtualMachine *vm, size_t address, byte value) {
+    if (!vm_validate_range(vm, address, sizeof(byte))) {
+        return;
+    }
+
     if (address >= ZLVM_ROM_SIZE) {
         address -= ZLVM_ROM_SIZE;
-        if (address >= vm->_memorySize) {
-            vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
-            return;
-        }
         vm->_memory[address] = value;
         return;
     }
     vm->_rom[address] = value;
 }
 
-hword vm_read_hword(VirtualMachine* vm, size_t address) {
-    hword result = 0;
-    byte* bytes = (byte*)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
-    }
-    return result;
-}
-
-void vm_write_hword(VirtualMachine* vm, size_t address, hword value) {
-    const byte* bytes = (const byte*)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
-    }
-}
-
-word vm_read_word(VirtualMachine* vm, size_t address) {
-    word result = 0;
-    byte* bytes = (byte*)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
-    }
-    return result;
-}
-
-void vm_write_word(VirtualMachine* vm, size_t address, word value) {
-    const byte* bytes = (const byte*)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
-    }
-}
-
-dword vm_read_dword(VirtualMachine* vm, size_t address) {
-    dword result = 0;
-    byte* bytes = (byte*)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
-    }
-    return result;
-}
-
-void vm_write_dword(VirtualMachine* vm, size_t address, dword value) {
-    const byte* bytes = (const byte*)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
-    }
-}
-
-word vm_pop_word(VirtualMachine* vm) {
-    if (vm->_registers[R_SP].word_ <= vm->_registers[R_BP].word_) {
-        vm_set_state(vm, S_ERR_STACK_UNDERFLOW);
+hword vm_read_hword(VirtualMachine *vm, size_t address) {
+    if (!vm_validate_range(vm, address, sizeof(hword))) {
         return 0;
     }
-    word result = vm_read_word(vm, vm->_registers[R_SP].word_);
-    vm->_registers[R_SP].word_ -= ZLVM_WORD_SIZE;
+
+    hword result = 0;
+    byte *bytes = (byte *)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
     return result;
 }
 
-void vm_push_word(VirtualMachine* vm, word value) {
-    word used_stack = vm->_registers[R_SP].word_ - vm->_registers[R_BP].word_;
-    if (used_stack > ZLVM_STACK_SIZE - ZLVM_WORD_SIZE) {
-        vm_set_state(vm, S_ERR_STACK_OVERFLOW);
+void vm_write_hword(VirtualMachine *vm, size_t address, hword value) {
+    if (!vm_validate_range(vm, address, sizeof(hword))) {
         return;
     }
-    vm->_registers[R_SP].word_ += ZLVM_WORD_SIZE;
-    vm_write_word(vm, vm->_registers[R_SP].word_, value);
+
+    const byte *bytes = (const byte *)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
 }
 
-bool vm_has_no_error(VirtualMachine* vm) {
+word vm_read_word(VirtualMachine *vm, size_t address) {
+    if (!vm_validate_range(vm, address, sizeof(word))) {
+        return 0;
+    }
+
+    word result = 0;
+    byte *bytes = (byte *)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
+    return result;
+}
+
+void vm_write_word(VirtualMachine *vm, size_t address, word value) {
+    if (!vm_validate_range(vm, address, sizeof(word))) {
+        return;
+    }
+
+    const byte *bytes = (const byte *)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
+}
+
+dword vm_read_dword(VirtualMachine *vm, size_t address) {
+    if (!vm_validate_range(vm, address, sizeof(dword))) {
+        return 0;
+    }
+
+    dword result = 0;
+    byte *bytes = (byte *)&result;
+    for (size_t index = 0; index < sizeof result; index++) {
+        bytes[index] = vm_read_byte(vm, address + index);
+    }
+    return result;
+}
+
+void vm_write_dword(VirtualMachine *vm, size_t address, dword value) {
+    if (!vm_validate_range(vm, address, sizeof(dword))) {
+        return;
+    }
+
+    const byte *bytes = (const byte *)&value;
+    for (size_t index = 0; index < sizeof value; index++) {
+        vm_write_byte(vm, address + index, bytes[index]);
+    }
+}
+
+bool vm_pop_word(VirtualMachine *vm, word *value) {
+    word stack_pointer = vm->_registers[R_SP].word_;
+    word base_pointer = vm->_registers[R_BP].word_;
+    word used_stack = stack_pointer - base_pointer;
+
+    if (stack_pointer < base_pointer || used_stack < ZLVM_WORD_SIZE ||
+        used_stack > ZLVM_STACK_SIZE || used_stack % ZLVM_WORD_SIZE != 0) {
+        vm_set_state(vm, S_ERR_STACK_UNDERFLOW);
+        return false;
+    }
+
+    size_t address = stack_pointer - ZLVM_WORD_SIZE;
+    word result = vm_read_word(vm, address);
+    if (!vm_has_no_error(vm)) {
+        return false;
+    }
+    vm->_registers[R_SP].word_ = (word)address;
+    if (value != NULL) {
+        *value = result;
+    }
+    return true;
+}
+
+bool vm_push_word(VirtualMachine *vm, word value) {
+    word stack_pointer = vm->_registers[R_SP].word_;
+    word base_pointer = vm->_registers[R_BP].word_;
+    word used_stack = stack_pointer - base_pointer;
+
+    if (stack_pointer < base_pointer || used_stack > ZLVM_STACK_SIZE - ZLVM_WORD_SIZE ||
+        used_stack % ZLVM_WORD_SIZE != 0) {
+        vm_set_state(vm, S_ERR_STACK_OVERFLOW);
+        return false;
+    }
+
+    size_t address = stack_pointer;
+    if (!vm_validate_range(vm, address, sizeof value)) {
+        return false;
+    }
+    vm_write_word(vm, address, value);
+    if (!vm_has_no_error(vm)) {
+        return false;
+    }
+    vm->_registers[R_SP].word_ = (word)address + ZLVM_WORD_SIZE;
+    return true;
+}
+
+bool vm_has_no_error(VirtualMachine *vm) {
     return !is_error(vm->_cpsr.ST);
 }
 
-bool vm_has_state(VirtualMachine* vm, State state) {
+bool vm_has_state(VirtualMachine *vm, State state) {
     return vm->_cpsr.ST == state;
 }
 
-void vm_set_state(VirtualMachine* vm, State state) {
+void vm_set_state(VirtualMachine *vm, State state) {
     if (vm_has_no_error(vm)) {
         vm->_cpsr.ST = state;
     }
 }
 
-enum State vm_get_state(VirtualMachine* vm) {
+enum State vm_get_state(VirtualMachine *vm) {
     return vm->_cpsr.ST;
 }
 
-void vm_do_operation(VirtualMachine* vm, Operation op, word left, word right) {
+void vm_do_operation(VirtualMachine *vm, Operation op, word left, word right) {
+    if ((op == OP_DIV || op == OP_MOD || op == OP_SDIV || op == OP_SMOD) && right == 0) {
+        vm_set_state(vm, S_ERR_DIVISION_BY_ZERO);
+        return;
+    }
+
     vm->_alu.op_ = op;
     vm->_alu.left_ = left;
     vm->_alu.right_ = right;
@@ -522,7 +616,32 @@ void vm_do_operation(VirtualMachine* vm, Operation op, word left, word right) {
     vm->_cpsr.S = vm->_alu.flags_.S;
 }
 
-void vm_interrupt(VirtualMachine* vm, word code) {
+static bool vm_validate_range(VirtualMachine *vm, size_t address, size_t size) {
+    if (vm->_memorySize > SIZE_T_MAX - ZLVM_ROM_SIZE) {
+        vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
+        return false;
+    }
+
+    size_t memory_end = ZLVM_ROM_SIZE + vm->_memorySize;
+    if (size > memory_end || address > memory_end - size) {
+        vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
+        return false;
+    }
+    return true;
+}
+
+static bool vm_effective_address(VirtualMachine *vm, word base, word offset, size_t size,
+                                 size_t *address) {
+    dword result = (dword)base + (dword)offset;
+    if (result > SIZE_T_MAX || !vm_validate_range(vm, (size_t)result, size)) {
+        vm_set_state(vm, S_ERR_OUT_OF_MEMORY);
+        return false;
+    }
+    *address = (size_t)result;
+    return true;
+}
+
+void vm_interrupt(VirtualMachine *vm, word code) {
     // TODO(emulator): replace host I/O interrupts with an injectable interface.
     switch (code) {
         case 0x01:
@@ -542,7 +661,7 @@ void vm_interrupt(VirtualMachine* vm, word code) {
     }
 }
 
-void vm_syscall(VirtualMachine* vm) {
+void vm_syscall(VirtualMachine *vm) {
     // TODO(emulator): implement syscall services.
     switch (vm->_registers[R_SC].word_) {
         default:

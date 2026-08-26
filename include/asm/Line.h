@@ -12,17 +12,17 @@ typedef enum LineType { L_NONE, L_DIR, L_STMT, L_RAW } LineType;
 
 typedef struct RawData {
     size_t size;
-    byte* data;
+    byte *data;
 } RawData;
 
 typedef struct Line {
     LineType type;
-    char* label;
+    char *label;
     size_t size;
     union {
-        Directive* dir;
-        Statement* stmt;
-        RawData* raw;
+        Directive *dir;
+        Statement *stmt;
+        RawData *raw;
     };
 } Line;
 
