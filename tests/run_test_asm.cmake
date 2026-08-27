@@ -2,66 +2,111 @@ if(
     NOT DEFINED ZLVM_EXECUTABLE
     OR NOT DEFINED ZLASM_EXECUTABLE
     OR NOT DEFINED ZLVM_TEST_PROGRAM
+    OR NOT DEFINED ZLVM_TEST_BINARY
     OR NOT DEFINED ZLVM_TEST_DIR
 )
-    message(FATAL_ERROR "The ZLVM and ZLASM executables, test program, and test directory are required")
+    message(
+        FATAL_ERROR
+        "The ZLVM and ZLASM executables, test program, test binary, and test directory are required"
+    )
 endif()
 
 file(MAKE_DIRECTORY "${ZLVM_TEST_DIR}")
-set(test_binary "${ZLVM_TEST_DIR}/test.bin")
+set(source_stdout "${ZLVM_TEST_DIR}/source.stdout")
+set(source_stderr "${ZLVM_TEST_DIR}/source.stderr")
+set(binary_stdout "${ZLVM_TEST_DIR}/binary.stdout")
+set(binary_stderr "${ZLVM_TEST_DIR}/binary.stderr")
 
-execute_process(
-    COMMAND "${ZLASM_EXECUTABLE}" "${ZLVM_TEST_PROGRAM}" -o "${test_binary}"
-    RESULT_VARIABLE assembler_result
-    OUTPUT_VARIABLE assembler_output
-    ERROR_VARIABLE assembler_error
-)
-if(NOT assembler_result EQUAL 0)
+function(compare_output name source_path binary_path)
+    file(READ "${source_path}" source_hex HEX)
+    file(READ "${binary_path}" binary_hex HEX)
+    if(source_hex STREQUAL binary_hex)
+        return()
+    endif()
+
+    string(LENGTH "${source_hex}" source_hex_length)
+    string(LENGTH "${binary_hex}" binary_hex_length)
+    math(EXPR source_size "${source_hex_length} / 2")
+    math(EXPR binary_size "${binary_hex_length} / 2")
+    if(source_size LESS binary_size)
+        set(common_size "${source_size}")
+    else()
+        set(common_size "${binary_size}")
+    endif()
+
+    set(offset 0)
+    while(offset LESS common_size)
+        math(EXPR hex_offset "${offset} * 2")
+        string(SUBSTRING "${source_hex}" ${hex_offset} 2 source_byte)
+        string(SUBSTRING "${binary_hex}" ${hex_offset} 2 binary_byte)
+        if(NOT source_byte STREQUAL binary_byte)
+            break()
+        endif()
+        math(EXPR offset "${offset} + 1")
+    endwhile()
+
+    math(EXPR context_start "${offset} - 8")
+    if(context_start LESS 0)
+        set(context_start 0)
+    endif()
+    math(EXPR context_hex_start "${context_start} * 2")
+    math(EXPR source_context_length "${source_hex_length} - ${context_hex_start}")
+    math(EXPR binary_context_length "${binary_hex_length} - ${context_hex_start}")
+    if(source_context_length GREATER 32)
+        set(source_context_length 32)
+    endif()
+    if(binary_context_length GREATER 32)
+        set(binary_context_length 32)
+    endif()
+    string(SUBSTRING "${source_hex}" ${context_hex_start} ${source_context_length} source_context)
+    string(SUBSTRING "${binary_hex}" ${context_hex_start} ${binary_context_length} binary_context)
+
     message(
         FATAL_ERROR
-        "Unable to assemble test binary (${assembler_result}):\n${assembler_error}\n${assembler_output}"
+        "${name} differs at byte ${offset} "
+        "(source size ${source_size}, binary size ${binary_size}); "
+        "bytes from offset ${context_start}: source=${source_context}, binary=${binary_context}"
     )
-endif()
+endfunction()
 
 execute_process(
     COMMAND "${ZLVM_EXECUTABLE}" "${ZLVM_TEST_PROGRAM}"
     RESULT_VARIABLE source_result
-    OUTPUT_VARIABLE source_output
-    ERROR_VARIABLE source_error
+    OUTPUT_FILE "${source_stdout}"
+    ERROR_FILE "${source_stderr}"
 )
 
 execute_process(
-    COMMAND "${ZLVM_EXECUTABLE}" --binary "${test_binary}"
+    COMMAND "${ZLVM_EXECUTABLE}" --binary "${ZLVM_TEST_BINARY}"
     RESULT_VARIABLE binary_result
-    OUTPUT_VARIABLE binary_output
-    ERROR_VARIABLE binary_error
+    OUTPUT_FILE "${binary_stdout}"
+    ERROR_FILE "${binary_stderr}"
 )
 
+file(READ "${source_stdout}" source_output)
+file(READ "${source_stderr}" source_error)
+file(READ "${binary_stdout}" binary_output)
+file(READ "${binary_stderr}" binary_error)
+
+if(NOT source_result STREQUAL binary_result)
+    message(FATAL_ERROR "Process status differs: source=${source_result}, binary=${binary_result}")
+endif()
 if(NOT source_result EQUAL 0)
     message(
         FATAL_ERROR
-        "Source execution failed with status ${source_result}:\n${source_error}\n${source_output}"
+        "Source and binary execution failed with status ${source_result}:\n"
+        "source stderr:\n${source_error}\nsource stdout:\n${source_output}\n"
+        "binary stderr:\n${binary_error}\nbinary stdout:\n${binary_output}"
     )
 endif()
-if(NOT binary_result EQUAL 0)
-    message(
-        FATAL_ERROR
-        "Binary execution failed with status ${binary_result}:\n${binary_error}\n${binary_output}"
-    )
-endif()
-if(NOT "${source_output}" STREQUAL "${binary_output}")
-    message(FATAL_ERROR "Source and binary output differ:\n${source_output}\n---\n${binary_output}")
-endif()
-if(NOT "${source_error}" STREQUAL "${binary_error}")
-    message(FATAL_ERROR "Source and binary errors differ:\n${source_error}\n---\n${binary_error}")
-endif()
+compare_output("stdout" "${source_stdout}" "${binary_stdout}")
+compare_output("stderr" "${source_stderr}" "${binary_stderr}")
 
-foreach(expected_text IN ITEMS "Hello, World!" "Bye!" "Halted")
-    string(FIND "${source_output}" "${expected_text}" match_index)
-    if(match_index EQUAL -1)
-        message(FATAL_ERROR "Missing expected output '${expected_text}':\n${source_output}")
-    endif()
-endforeach()
+set(expected_program_output "Hello, World!\n\nBye!\n\n")
+string(FIND "${source_output}" "${expected_program_output}" program_output_index)
+if(program_output_index EQUAL -1)
+    message(FATAL_ERROR "Missing exact program output 'Hello, World!\\n\\nBye!\\n\\n':\n${source_output}")
+endif()
 
 function(expect_cli_failure name expected_error)
     execute_process(
@@ -86,7 +131,7 @@ endfunction()
 expect_cli_failure("no arguments" "Usage:")
 expect_cli_failure("missing binary path" "Usage:" --binary)
 expect_cli_failure("extra source argument" "Usage:" "${ZLVM_TEST_PROGRAM}" extra)
-expect_cli_failure("extra binary argument" "Usage:" --binary "${test_binary}" extra)
+expect_cli_failure("extra binary argument" "Usage:" --binary "${ZLVM_TEST_BINARY}" extra)
 
 set(dash_source "${ZLVM_TEST_DIR}/-test.asm")
 file(COPY_FILE "${ZLVM_TEST_PROGRAM}" "${dash_source}")
