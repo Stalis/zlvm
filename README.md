@@ -2,8 +2,8 @@
 
 ZLVM is an experimental assembler and virtual machine for the ZL virtual CPU. The project is
 written in C11 and contains both an assembler (`zlasm`) and an emulator (`zlvm`). Assembly source
-can be translated in memory and executed by the emulator, or assembled separately for future
-binary-loading workflows.
+can be translated in memory and executed by the emulator, or assembled separately and loaded as a
+binary ROM image.
 
 The project is under active development. The instruction set is largely implemented, and
 `test.asm` now runs as the end-to-end reference program. The assembler and VM still have binary
@@ -19,7 +19,7 @@ Assembly source
  Lexer -> Parser -> Directive and label passes -> Instruction/data encoder
                                                         |
                                                         v
-                                           ROM image / future .bin file
+                                                ROM image / .bin file
                                                         |
                                                         v
                                       ZL virtual CPU (registers, ALU, RAM)
@@ -73,6 +73,13 @@ The intended direct source workflow is:
 
 `zlvm` assembles the source in memory, loads the resulting image into ROM, starts execution at ROM
 address zero, and runs until the VM halts or enters an error state.
+
+To execute an image assembled separately, use the explicit `--binary` option:
+
+```sh
+./build/asm/zlasm program.asm -o program.bin
+./build/emulator/zlvm --binary program.bin
+```
 
 The standalone assembler supports an optional output path:
 
@@ -133,7 +140,7 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
 
 - [x] Support `zlasm test.asm -o test.bin` without modifying `argv` storage and report input/output
   failures with a nonzero exit status.
-- [ ] Support `zlvm --binary test.bin` while retaining direct `zlvm test.asm` execution.
+- [x] Support `zlvm --binary test.bin` while retaining direct `zlvm test.asm` execution.
 - [x] Remove the Debug-only parser path that executes the program and exits before writing a file.
 - [x] Replace native-structure serialization with a fixed-width, explicitly endian-defined binary
   encoding shared by the assembler and VM loader.
