@@ -87,9 +87,8 @@ The standalone assembler supports an optional output path:
 ./build/asm/zlasm program.asm -o program.bin
 ```
 
-Without `-o`, it replaces the input extension with `.bin`. Until the portable encoding work is
-complete, generate binary images with `zlasm` from the same build of the project; older or
-cross-platform `.bin` files are not guaranteed to be compatible.
+Without `-o`, it replaces the input extension with `.bin`. The output is a raw little-endian ROM
+image using the instruction and data layout defined in the [ISA reference](docs/ISA.md).
 
 ## Assembly Example
 
@@ -106,8 +105,8 @@ case-insensitive because the assembler normalizes them before translation. See t
 
 ## Current Limitations
 
-- The encoded `Instruction` is copied directly from a C bitfield structure, making binary output
-  dependent on compiler, ABI, and host byte order.
+- Binary images have no header, format version, sections, entry-point metadata, or relocation
+  records.
 - Sections, alignment, explicit placement, entry selection, macros, external symbols, and linking
   are incomplete or metadata-only.
 
@@ -143,7 +142,7 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
   failures with a nonzero exit status.
 - [x] Support `zlvm --binary test.bin` while retaining direct `zlvm test.asm` execution.
 - [x] Remove the Debug-only parser path that executes the program and exits before writing a file.
-- [ ] Replace native-structure serialization with a fixed-width, explicitly endian-defined binary
+- [x] Replace native-structure serialization with a fixed-width, explicitly endian-defined binary
   encoding shared by the assembler and VM loader.
 - [ ] Prove source and binary execution are equivalent by comparing output, halt state, registers,
   and relevant memory.
