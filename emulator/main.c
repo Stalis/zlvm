@@ -4,8 +4,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static byte *read_source(const char *path, size_t *binary_size);
+static byte *read_binary(const char *path, size_t *binary_size);
 static void print_state(State state);
 
 int main(int argc, char **argv) {
@@ -19,13 +21,17 @@ int main(int argc, char **argv) {
     printf("Stack size: %d bytes\n", ZLVM_STACK_SIZE);
     printf("==========================================\n");
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <assembly-file>\n", argv[0]);
+    bool binary_mode = argc == 3 && strcmp(argv[1], "--binary") == 0;
+    bool source_mode = argc == 2 && argv[1][0] != '-';
+    if (!source_mode && !binary_mode) {
+        fprintf(stderr, "Usage: %s <assembly-file>\n       %s --binary <binary-file>\n", argv[0],
+                argv[0]);
         return EXIT_FAILURE;
     }
 
     size_t binary_size = 0;
-    byte *binary = read_source(argv[1], &binary_size);
+    byte *binary =
+        binary_mode ? read_binary(argv[2], &binary_size) : read_source(argv[1], &binary_size);
 
     VirtualMachine vm = {0};
     vm_initialize(&vm, memory_size);
@@ -46,13 +52,13 @@ static byte *read_source(const char *path, size_t *binary_size) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t length = 0;
-    char *source = vm_malloc(capacity + 1);
 
     FILE *file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Unable to open assembly source: %s\n", path);
         exit(EXIT_FAILURE);
     }
+    char *source = vm_malloc(capacity + 1);
 
     while (true) {
         size_t available = capacity - length;
@@ -60,12 +66,6 @@ static byte *read_source(const char *path, size_t *binary_size) {
         length += bytes_read;
 
         if (bytes_read < available) {
-            if (ferror(file)) {
-                fprintf(stderr, "Unable to read assembly source: %s\n", path);
-                fclose(file);
-                free(source);
-                exit(EXIT_FAILURE);
-            }
             break;
         }
 
@@ -73,8 +73,15 @@ static byte *read_source(const char *path, size_t *binary_size) {
         source = vm_realloc(source, capacity + 1);
     }
 
-    if (fclose(file) != 0) {
+    bool read_failed = ferror(file);
+    bool close_failed = fclose(file) != 0;
+    if (read_failed) {
+        fprintf(stderr, "Unable to read assembly source: %s\n", path);
+    }
+    if (close_failed) {
         fprintf(stderr, "Unable to close assembly source: %s\n", path);
+    }
+    if (read_failed || close_failed) {
         free(source);
         exit(EXIT_FAILURE);
     }
@@ -82,6 +89,43 @@ static byte *read_source(const char *path, size_t *binary_size) {
     source[length] = '\0';
     byte *binary = assemblySource(source, binary_size);
     free(source);
+    return binary;
+}
+
+static byte *read_binary(const char *path, size_t *binary_size) {
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "Unable to open binary image: %s\n", path);
+        exit(EXIT_FAILURE);
+    }
+
+    byte *binary = vm_malloc(ZLVM_ROM_SIZE + 1);
+    size_t size = fread(binary, 1, ZLVM_ROM_SIZE + 1, file);
+    bool read_failed = ferror(file);
+    bool close_failed = fclose(file) != 0;
+
+    if (read_failed) {
+        fprintf(stderr, "Unable to read binary image: %s\n", path);
+    }
+    if (close_failed) {
+        fprintf(stderr, "Unable to close binary image: %s\n", path);
+    }
+    if (read_failed || close_failed) {
+        free(binary);
+        exit(EXIT_FAILURE);
+    }
+    if (size == 0) {
+        fprintf(stderr, "Binary image is empty: %s\n", path);
+        free(binary);
+        exit(EXIT_FAILURE);
+    }
+    if (size > ZLVM_ROM_SIZE) {
+        fprintf(stderr, "Binary image exceeds ROM size: %s\n", path);
+        free(binary);
+        exit(EXIT_FAILURE);
+    }
+
+    *binary_size = size;
     return binary;
 }
 

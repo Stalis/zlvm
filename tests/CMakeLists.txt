@@ -3,7 +3,9 @@ add_test(
     COMMAND
         ${CMAKE_COMMAND}
         -DZLVM_EXECUTABLE=$<TARGET_FILE:zlvm-bin>
+        -DZLASM_EXECUTABLE=$<TARGET_FILE:zlasm-bin>
         -DZLVM_TEST_PROGRAM=${CMAKE_SOURCE_DIR}/test.asm
+        -DZLVM_TEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli-fixtures
         -P ${CMAKE_CURRENT_LIST_DIR}/run_test_asm.cmake
 )
 
