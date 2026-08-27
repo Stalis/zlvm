@@ -96,7 +96,13 @@ Instruction vm_fetch_instruction(VirtualMachine *vm) {
     for (size_t index = 0; index < ZLVM_INSTRUCTION_SIZE; index++) {
         bytes[index] = vm_fetch_byte(vm);
     }
-    return instruction_decode(bytes);
+
+    Instruction instruction;
+    if (!instruction_decode(&instruction, bytes, sizeof bytes)) {
+        vm_set_state(vm, S_ERR_INVALID_OPCODE);
+        return (Instruction){0};
+    }
+    return instruction;
 }
 
 void vm_run_instruction(VirtualMachine *vm, Instruction instruction) {

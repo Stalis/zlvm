@@ -6,7 +6,16 @@
 
 #include <stdio.h>
 
-void instruction_encode(byte output[ZLVM_INSTRUCTION_SIZE], const Instruction *instruction) {
+_Static_assert(OPCODE_TOTAL - 1 <= UINT8_MAX, "Opcode must fit in one byte");
+_Static_assert(C_TOTAL - 1 <= UINT8_MAX, "Condition must fit in one byte");
+
+bool instruction_encode(byte *output, size_t output_size, const Instruction *instruction) {
+    if (output == NULL || output_size < ZLVM_INSTRUCTION_SIZE || instruction == NULL ||
+        (unsigned)instruction->opcode_ >= OPCODE_TOTAL ||
+        (unsigned)instruction->condition_ >= C_TOTAL) {
+        return false;
+    }
+
     output[0] = (byte)instruction->opcode_;
     output[1] = (byte)instruction->condition_;
     output[2] = instruction->register1;
@@ -14,9 +23,14 @@ void instruction_encode(byte output[ZLVM_INSTRUCTION_SIZE], const Instruction *i
     for (size_t index = 0; index < sizeof instruction->immediate; index++) {
         output[4 + index] = (byte)(instruction->immediate >> (index * 8));
     }
+    return true;
 }
 
-Instruction instruction_decode(const byte input[ZLVM_INSTRUCTION_SIZE]) {
+bool instruction_decode(Instruction *output, const byte *input, size_t input_size) {
+    if (output == NULL || input == NULL || input_size < ZLVM_INSTRUCTION_SIZE) {
+        return false;
+    }
+
     Instruction instruction = {
         .opcode_ = (Opcode)input[0],
         .condition_ = (Condition)input[1],
@@ -26,7 +40,8 @@ Instruction instruction_decode(const byte input[ZLVM_INSTRUCTION_SIZE]) {
     for (size_t index = 0; index < sizeof instruction.immediate; index++) {
         instruction.immediate |= (word)input[4 + index] << (index * 8);
     }
-    return instruction;
+    *output = instruction;
+    return true;
 }
 
 void instruction_print(Instruction *instruction) {

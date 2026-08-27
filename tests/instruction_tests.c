@@ -18,6 +18,12 @@ static Instruction instruction(Opcode opcode, byte register1, byte register2, wo
     };
 }
 
+static Instruction decode_instruction(const byte *input) {
+    Instruction result;
+    assert(instruction_decode(&result, input, ZLVM_INSTRUCTION_SIZE));
+    return result;
+}
+
 static void initialize_vm(VirtualMachine *vm, size_t ram_size) {
     *vm = (VirtualMachine){0};
     vm_initialize(vm, ram_size);
@@ -35,15 +41,42 @@ static void test_instruction_codec(void) {
         .immediate = 0x12345678,
     };
     byte encoded[ZLVM_INSTRUCTION_SIZE];
-    instruction_encode(encoded, &value);
+    assert(instruction_encode(encoded, sizeof encoded, &value));
     assert(memcmp(encoded, expected, sizeof expected) == 0);
 
-    Instruction decoded = instruction_decode(expected);
+    Instruction decoded = decode_instruction(expected);
     assert(decoded.opcode_ == MOVI);
     assert(decoded.condition_ == C_ZERO_SET);
     assert(decoded.register1 == R_T0);
     assert(decoded.register2 == R_T1);
     assert(decoded.immediate == 0x12345678);
+}
+
+static void test_instruction_codec_validation(void) {
+    Instruction value = instruction(MOVI, R_T0, R_T1, 0x12345678);
+    byte output[ZLVM_INSTRUCTION_SIZE];
+    byte expected[ZLVM_INSTRUCTION_SIZE];
+    memset(output, 0xAA, sizeof output);
+    memcpy(expected, output, sizeof expected);
+
+    assert(!instruction_encode(NULL, sizeof output, &value));
+    assert(!instruction_encode(output, ZLVM_INSTRUCTION_SIZE - 1, &value));
+    assert(memcmp(output, expected, sizeof output) == 0);
+    value.opcode_ = OPCODE_TOTAL;
+    assert(!instruction_encode(output, sizeof output, &value));
+    assert(memcmp(output, expected, sizeof output) == 0);
+    value.opcode_ = MOVI;
+    value.condition_ = C_TOTAL;
+    assert(!instruction_encode(output, sizeof output, &value));
+    assert(memcmp(output, expected, sizeof output) == 0);
+    assert(!instruction_encode(output, sizeof output, NULL));
+
+    Instruction decoded = instruction(NOP, R_ZERO, R_ZERO, 0xAAAAAAAA);
+    assert(!instruction_decode(NULL, output, sizeof output));
+    assert(!instruction_decode(&decoded, NULL, sizeof output));
+    assert(!instruction_decode(&decoded, output, ZLVM_INSTRUCTION_SIZE - 1));
+    assert(decoded.opcode_ == NOP);
+    assert(decoded.immediate == 0xAAAAAAAA);
 }
 
 static void test_assembler_accepts_every_opcode(void) {
@@ -108,15 +141,15 @@ static void test_assembler_accepts_every_opcode(void) {
     byte *binary = assemblySource(source, &binary_size);
     assert(binary_size == OPCODE_TOTAL * ZLVM_INSTRUCTION_SIZE);
     for (size_t index = 0; index < OPCODE_TOTAL; index++) {
-        Instruction encoded = instruction_decode(binary + index * ZLVM_INSTRUCTION_SIZE);
+        Instruction encoded = decode_instruction(binary + index * ZLVM_INSTRUCTION_SIZE);
         assert(encoded.opcode_ == (Opcode)index);
     }
     free(binary);
 
     char conditions[] = "nop uh\nnop ul\n";
     binary = assemblySource(conditions, &binary_size);
-    assert(instruction_decode(binary).condition_ == C_UNSIGNED_HIGHER);
-    assert(instruction_decode(binary + ZLVM_INSTRUCTION_SIZE).condition_ ==
+    assert(decode_instruction(binary).condition_ == C_UNSIGNED_HIGHER);
+    assert(decode_instruction(binary + ZLVM_INSTRUCTION_SIZE).condition_ ==
            C_UNSIGNED_LOWER_OR_SAME);
     free(binary);
 }
@@ -129,7 +162,7 @@ static void test_assembler_layout(void) {
     size_t binary_size = 0;
     byte *binary = assemblySource(source, &binary_size);
     assert(binary_size == ZLVM_INSTRUCTION_SIZE * 2 + 1);
-    assert(instruction_decode(binary).immediate == ZLVM_INSTRUCTION_SIZE + 1);
+    assert(decode_instruction(binary).immediate == ZLVM_INSTRUCTION_SIZE + 1);
     assert(binary[ZLVM_INSTRUCTION_SIZE] == 0xFF);
 
     const byte expected[] = {0x07, 0x01, 0x0A, 0x00, 0x78, 0x56, 0x34, 0x12};
@@ -186,7 +219,7 @@ static void test_decoded_instruction_validation(void) {
     for (size_t index = 0; index < sizeof invalid / sizeof invalid[0]; index++) {
         VirtualMachine vm;
         initialize_vm(&vm, 8);
-        vm_run_instruction(&vm, instruction_decode(invalid[index]));
+        vm_run_instruction(&vm, decode_instruction(invalid[index]));
         assert(vm_get_state(&vm) == expected[index]);
         vm_destroy(&vm);
     }
@@ -410,6 +443,7 @@ static void test_vm_errors_are_atomic(void) {
 
 int main(void) {
     test_instruction_codec();
+    test_instruction_codec_validation();
     test_assembler_accepts_every_opcode();
     test_assembler_layout();
     test_directive_encoding();

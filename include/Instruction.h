@@ -18,8 +18,19 @@ typedef struct Instruction {
 
 enum { ZLVM_INSTRUCTION_SIZE = 8 };
 
-void instruction_encode(byte output[ZLVM_INSTRUCTION_SIZE], const Instruction *instruction);
-Instruction instruction_decode(const byte input[ZLVM_INSTRUCTION_SIZE]);
+/**
+ * Encodes an instruction into the first ZLVM_INSTRUCTION_SIZE bytes of output.
+ * Returns false without modifying output if a pointer is null, output is too small, or an enum
+ * field cannot be encoded.
+ */
+bool instruction_encode(byte *output, size_t output_size, const Instruction *instruction);
+
+/**
+ * Decodes the first ZLVM_INSTRUCTION_SIZE bytes of input into output.
+ * Returns false without modifying output if a pointer is null or input is too small. Encoded field
+ * values are not semantically validated.
+ */
+bool instruction_decode(Instruction *output, const byte *input, size_t input_size);
 void instruction_print(Instruction *instruction);
 
 #endif // ZLVM_C_INSTRUCTION_H

@@ -205,7 +205,10 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
                 }
             }
 
-            instruction_encode(encoded_instruction, &instruction);
+            if (!instruction_encode(encoded_instruction, sizeof encoded_instruction,
+                                    &instruction)) {
+                ZLASM_CRASH("Assembler error: instruction encoding failed");
+            }
             data = encoded_instruction;
             data_size = ZLVM_INSTRUCTION_SIZE;
         } else if (current->value->type == L_RAW) {
