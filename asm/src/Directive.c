@@ -70,9 +70,15 @@ byte *directive_get_raw_data(Directive *directive, size_t *output_size) {
             byte *result = NULL;
             for (size_t index = 0; index < directive->argc; index++) {
                 size_t value_size = 0;
-                byte *value = token_get_raw_data(directive->argv[index], &value_size);
-                if (directive->argv[index]->type != TOK_STRING_LITERAL) {
+                byte *value;
+                if (directive->argv[index]->type == TOK_STRING_LITERAL) {
+                    value = token_get_string_value(directive->argv[index]->value, &value_size);
+                } else {
                     value_size = 1;
+                    value = asm_malloc(value_size);
+                    *value = directive->argv[index]->type == TOK_CHAR_LITERAL
+                                 ? (byte)token_get_char_value(directive->argv[index]->value)
+                                 : (byte)token_get_int_value(directive->argv[index]);
                 }
 
                 size_t previous_size = *output_size;
@@ -118,16 +124,16 @@ static byte *encode_numeric_data(const Directive *directive, size_t element_size
     byte *result = asm_malloc(*output_size);
 
     for (size_t index = 0; index < directive->argc; index++) {
-        size_t raw_size = 0;
-        byte *raw_data = token_get_raw_data(directive->argv[index], &raw_size);
-        dword value = 0;
-        memcpy(&value, raw_data, raw_size < sizeof value ? raw_size : sizeof value);
-        asm_free(raw_data);
+        dword value = directive->argv[index]->type == TOK_CHAR_LITERAL
+                          ? (byte)token_get_char_value(directive->argv[index]->value)
+                          : token_get_int_value(directive->argv[index]);
 
         if (value > maximum_value) {
             ZLASM_TOKEN_CRASH("Value does not fit the directive width", directive->argv[index]);
         }
-        memcpy(result + index * element_size, &value, element_size);
+        for (size_t byte_index = 0; byte_index < element_size; byte_index++) {
+            result[index * element_size + byte_index] = (byte)(value >> (byte_index * 8));
+        }
     }
     return result;
 }

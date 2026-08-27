@@ -1,8 +1,8 @@
 # ZL Virtual CPU Instruction Set Architecture
 
 This document describes the virtual CPU and assembly language implemented by the current ZLVM
-source tree. ZLVM is experimental: several declarations are only partially implemented, and the
-current binary representation is not a stable interchange format. Such cases are marked below.
+source tree. ZLVM is experimental, and several declarations are only partially implemented. Such
+cases are marked below.
 
 ## Machine Model
 
@@ -22,20 +22,20 @@ decrements `sp` by four and then reads a word.
 
 ## Instruction Encoding
 
-The logical instruction layout is:
+ROM images are raw byte sequences without a header. Each instruction occupies exactly eight bytes
+with this layout:
 
-| Bits | Width | Field |
-| --- | ---: | --- |
-| `0..7` | 8 | Opcode |
-| `8..15` | 8 | Condition |
-| `16..23` | 8 | First register |
-| `24..31` | 8 | Second register |
-| `32..63` | 32 | Immediate value or absolute target address |
+| Byte offset | Size | Field |
+| ---: | ---: | --- |
+| 0 | 1 | Opcode |
+| 1 | 1 | Condition |
+| 2 | 1 | First register |
+| 3 | 1 | Second register |
+| 4 | 4 | Immediate value or absolute target address, unsigned little-endian |
 
-The current assembler creates an `Instruction` C bitfield structure and copies its eight bytes
-directly into the output. Bitfield allocation order, padding, and byte order are implementation
-defined, so this table expresses the intended logical format rather than a portable file format.
-A stable binary format must define byte offsets and endianness explicitly.
+For example, opcode 7, condition 1, registers 10 and 11, and immediate `0x12345678`
+encode as `07 01 0a 0b 78 56 34 12`. The in-memory `Instruction` structure is a logical value; its
+native size and representation are not part of the image format.
 
 ## Registers
 
@@ -77,8 +77,8 @@ range-checked, and an unknown alias terminates assembly with a diagnostic.
 | 30 | `$bp` | Stack base pointer |
 | 31 | `$pc` | Program counter |
 
-Writing a byte or halfword updates only that member of the register's `Value` union on the current
-host. Code should not assume a portable union layout.
+Writing a byte or halfword updates the low byte or halfword of the register and preserves its
+remaining bits.
 
 ## Processor Flags and State
 
@@ -272,13 +272,24 @@ implemented.
 | `.proc name` / `.endproc` | Scope local labels | Implemented |
 | `.macro` / `.endmacro` | Define a macro | Markers are removed; macro expansion is not implemented |
 
-All numeric data is currently copied in host byte order. This will change when the portable binary
-format in the project roadmap is defined.
+`.hword`, `.word`, and `.dword` values are emitted least-significant byte first. `.byte`, `.ascii`,
+`.asciiz`, and `.space` are byte-oriented. For example:
+
+```asm
+.byte  0x12
+.hword 0x1234
+.word  0x12345678
+.dword 0x0123456789abcdef
+```
+
+emits `12 34 12 78 56 34 12 ef cd ab 89 67 45 23 01`. VM halfword, word, and
+doubleword memory reads and writes use the same little-endian order. Multi-byte values need not be
+aligned.
 
 ## Known Compatibility Constraints
 
-- Binary images are compatible only with the compiler/ABI/endianness combination that produced
-  the VM until explicit serialization is implemented.
+- ROM images contain no magic value, format version, sections, entry-point metadata, or relocation
+  records. Execution starts at byte address zero.
 - Error reporting often exits immediately rather than returning structured diagnostics.
 
 The prioritized implementation sequence and acceptance criteria are maintained in the

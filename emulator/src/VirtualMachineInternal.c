@@ -10,6 +10,8 @@
 static bool vm_validate_range(VirtualMachine *vm, size_t address, size_t size);
 static bool vm_effective_address(VirtualMachine *vm, word base, word offset, size_t size,
                                  size_t *address);
+static dword vm_read_scalar(VirtualMachine *vm, size_t address, size_t size);
+static void vm_write_scalar(VirtualMachine *vm, size_t address, dword value, size_t size);
 
 #if DEBUG
 
@@ -86,18 +88,15 @@ byte vm_fetch_byte(VirtualMachine *vm) {
 
 Instruction vm_fetch_instruction(VirtualMachine *vm) {
     size_t address = vm->_registers[R_PC].word_;
-    if (!vm_validate_range(vm, address, sizeof(Instruction))) {
+    if (!vm_validate_range(vm, address, ZLVM_INSTRUCTION_SIZE)) {
         return (Instruction){0};
     }
 
-    byte bytes[sizeof(Instruction)] = {0};
-    for (size_t index = 0; index < sizeof(Instruction); index++) {
+    byte bytes[ZLVM_INSTRUCTION_SIZE];
+    for (size_t index = 0; index < ZLVM_INSTRUCTION_SIZE; index++) {
         bytes[index] = vm_fetch_byte(vm);
     }
-
-    Instruction instruction = {0};
-    memcpy(&instruction, bytes, sizeof instruction);
-    return instruction;
+    return instruction_decode(bytes);
 }
 
 void vm_run_instruction(VirtualMachine *vm, Instruction instruction) {
@@ -304,13 +303,13 @@ void vm_run_instruction(VirtualMachine *vm, Instruction instruction) {
         case LOADB: {
             size_t address;
             if (vm_effective_address(vm, reg2->word_, imm, sizeof(byte), &address)) {
-                reg1->byte_ = vm_read_byte(vm, address);
+                reg1->word_ = (reg1->word_ & ~((word)BYTE_MAX)) | vm_read_byte(vm, address);
             }
         } break;
         case LOADH: {
             size_t address;
             if (vm_effective_address(vm, reg2->word_, imm, sizeof(hword), &address)) {
-                reg1->hword_ = vm_read_hword(vm, address);
+                reg1->word_ = (reg1->word_ & ~((word)HWORD_MAX)) | vm_read_hword(vm, address);
             }
         } break;
         case LOADW: {
@@ -323,13 +322,13 @@ void vm_run_instruction(VirtualMachine *vm, Instruction instruction) {
         case STOREB: {
             size_t address;
             if (vm_effective_address(vm, reg2->word_, imm, sizeof(byte), &address)) {
-                vm_write_byte(vm, address, reg1->byte_);
+                vm_write_byte(vm, address, (byte)reg1->word_);
             }
         } break;
         case STOREH: {
             size_t address;
             if (vm_effective_address(vm, reg2->word_, imm, sizeof(hword), &address)) {
-                vm_write_hword(vm, address, reg1->hword_);
+                vm_write_hword(vm, address, (hword)reg1->word_);
             }
         } break;
         case STOREW: {
@@ -462,74 +461,48 @@ void vm_write_byte(VirtualMachine *vm, size_t address, byte value) {
 }
 
 hword vm_read_hword(VirtualMachine *vm, size_t address) {
-    if (!vm_validate_range(vm, address, sizeof(hword))) {
-        return 0;
-    }
-
-    hword result = 0;
-    byte *bytes = (byte *)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
-    }
-    return result;
+    return (hword)vm_read_scalar(vm, address, sizeof(hword));
 }
 
 void vm_write_hword(VirtualMachine *vm, size_t address, hword value) {
-    if (!vm_validate_range(vm, address, sizeof(hword))) {
-        return;
-    }
-
-    const byte *bytes = (const byte *)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
-    }
+    vm_write_scalar(vm, address, value, sizeof value);
 }
 
 word vm_read_word(VirtualMachine *vm, size_t address) {
-    if (!vm_validate_range(vm, address, sizeof(word))) {
-        return 0;
-    }
-
-    word result = 0;
-    byte *bytes = (byte *)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
-    }
-    return result;
+    return (word)vm_read_scalar(vm, address, sizeof(word));
 }
 
 void vm_write_word(VirtualMachine *vm, size_t address, word value) {
-    if (!vm_validate_range(vm, address, sizeof(word))) {
-        return;
-    }
-
-    const byte *bytes = (const byte *)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
-    }
+    vm_write_scalar(vm, address, value, sizeof value);
 }
 
 dword vm_read_dword(VirtualMachine *vm, size_t address) {
-    if (!vm_validate_range(vm, address, sizeof(dword))) {
+    return vm_read_scalar(vm, address, sizeof(dword));
+}
+
+void vm_write_dword(VirtualMachine *vm, size_t address, dword value) {
+    vm_write_scalar(vm, address, value, sizeof value);
+}
+
+static dword vm_read_scalar(VirtualMachine *vm, size_t address, size_t size) {
+    if (!vm_validate_range(vm, address, size)) {
         return 0;
     }
 
     dword result = 0;
-    byte *bytes = (byte *)&result;
-    for (size_t index = 0; index < sizeof result; index++) {
-        bytes[index] = vm_read_byte(vm, address + index);
+    for (size_t index = 0; index < size; index++) {
+        result |= (dword)vm_read_byte(vm, address + index) << (index * 8);
     }
     return result;
 }
 
-void vm_write_dword(VirtualMachine *vm, size_t address, dword value) {
-    if (!vm_validate_range(vm, address, sizeof(dword))) {
+static void vm_write_scalar(VirtualMachine *vm, size_t address, dword value, size_t size) {
+    if (!vm_validate_range(vm, address, size)) {
         return;
     }
 
-    const byte *bytes = (const byte *)&value;
-    for (size_t index = 0; index < sizeof value; index++) {
-        vm_write_byte(vm, address + index, bytes[index]);
+    for (size_t index = 0; index < size; index++) {
+        vm_write_byte(vm, address + index, (byte)(value >> (index * 8)));
     }
 }
 
@@ -645,10 +618,10 @@ void vm_interrupt(VirtualMachine *vm, word code) {
     // TODO(emulator): replace host I/O interrupts with an injectable interface.
     switch (code) {
         case 0x01:
-            fputc(vm->_registers[R_A0].byte_ + 0x60, stdout);
+            fputc((byte)vm->_registers[R_A0].word_ + 0x60, stdout);
             break;
         case 0x02:
-            fputc(vm->_registers[R_A0].byte_, stdout);
+            fputc((byte)vm->_registers[R_A0].word_, stdout);
             break;
         case 0x10:
             vm->_registers[R_V0].word_ = (word)fgetc(stdin);

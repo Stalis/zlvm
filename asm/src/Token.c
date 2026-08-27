@@ -128,7 +128,9 @@ byte *token_get_raw_data(Token *token, size_t *output_size) {
             dword value = token_get_int_value(token);
             *output_size = sizeof value;
             byte *result = asm_malloc(*output_size);
-            memcpy(result, &value, *output_size);
+            for (size_t index = 0; index < *output_size; index++) {
+                result[index] = (byte)(value >> (index * 8));
+            }
             return result;
         }
         default:

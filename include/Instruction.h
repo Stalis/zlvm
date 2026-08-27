@@ -9,13 +9,17 @@
 #include "Opcode.h"
 
 typedef struct Instruction {
-    Opcode opcode_ : 8;
-    Condition condition_ : 8;
-    byte register1 : 8;
-    byte register2 : 8;
-    word immediate : 32;
+    Opcode opcode_;
+    Condition condition_;
+    byte register1;
+    byte register2;
+    word immediate;
 } Instruction;
 
+enum { ZLVM_INSTRUCTION_SIZE = 8 };
+
+void instruction_encode(byte output[ZLVM_INSTRUCTION_SIZE], const Instruction *instruction);
+Instruction instruction_decode(const byte input[ZLVM_INSTRUCTION_SIZE]);
 void instruction_print(Instruction *instruction);
 
 #endif // ZLVM_C_INSTRUCTION_H

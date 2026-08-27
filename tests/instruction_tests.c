@@ -25,6 +25,27 @@ static void initialize_vm(VirtualMachine *vm, size_t ram_size) {
     vm->_registers[R_SP].word_ = ZLVM_ROM_SIZE;
 }
 
+static void test_instruction_codec(void) {
+    const byte expected[ZLVM_INSTRUCTION_SIZE] = {0x07, 0x01, 0x0A, 0x0B, 0x78, 0x56, 0x34, 0x12};
+    Instruction value = {
+        .opcode_ = MOVI,
+        .condition_ = C_ZERO_SET,
+        .register1 = R_T0,
+        .register2 = R_T1,
+        .immediate = 0x12345678,
+    };
+    byte encoded[ZLVM_INSTRUCTION_SIZE];
+    instruction_encode(encoded, &value);
+    assert(memcmp(encoded, expected, sizeof expected) == 0);
+
+    Instruction decoded = instruction_decode(expected);
+    assert(decoded.opcode_ == MOVI);
+    assert(decoded.condition_ == C_ZERO_SET);
+    assert(decoded.register1 == R_T0);
+    assert(decoded.register2 == R_T1);
+    assert(decoded.immediate == 0x12345678);
+}
+
 static void test_assembler_accepts_every_opcode(void) {
     char source[] = "nop\n"
                     "pop\n"
@@ -85,21 +106,132 @@ static void test_assembler_accepts_every_opcode(void) {
 
     size_t binary_size = 0;
     byte *binary = assemblySource(source, &binary_size);
-    assert(binary_size == OPCODE_TOTAL * sizeof(Instruction));
+    assert(binary_size == OPCODE_TOTAL * ZLVM_INSTRUCTION_SIZE);
     for (size_t index = 0; index < OPCODE_TOTAL; index++) {
-        Instruction encoded = {0};
-        memcpy(&encoded, binary + index * sizeof encoded, sizeof encoded);
+        Instruction encoded = instruction_decode(binary + index * ZLVM_INSTRUCTION_SIZE);
         assert(encoded.opcode_ == (Opcode)index);
     }
     free(binary);
 
     char conditions[] = "nop uh\nnop ul\n";
     binary = assemblySource(conditions, &binary_size);
-    Instruction encoded[2] = {0};
-    memcpy(encoded, binary, sizeof encoded);
-    assert(encoded[0].condition_ == C_UNSIGNED_HIGHER);
-    assert(encoded[1].condition_ == C_UNSIGNED_LOWER_OR_SAME);
+    assert(instruction_decode(binary).condition_ == C_UNSIGNED_HIGHER);
+    assert(instruction_decode(binary + ZLVM_INSTRUCTION_SIZE).condition_ ==
+           C_UNSIGNED_LOWER_OR_SAME);
     free(binary);
+}
+
+static void test_assembler_layout(void) {
+    char source[] = "jmp #target\n"
+                    ".byte 0xff\n"
+                    "target:\n"
+                    "movi zs $t0, 0x12345678\n";
+    size_t binary_size = 0;
+    byte *binary = assemblySource(source, &binary_size);
+    assert(binary_size == ZLVM_INSTRUCTION_SIZE * 2 + 1);
+    assert(instruction_decode(binary).immediate == ZLVM_INSTRUCTION_SIZE + 1);
+    assert(binary[ZLVM_INSTRUCTION_SIZE] == 0xFF);
+
+    const byte expected[] = {0x07, 0x01, 0x0A, 0x00, 0x78, 0x56, 0x34, 0x12};
+    assert(memcmp(binary + ZLVM_INSTRUCTION_SIZE + 1, expected, sizeof expected) == 0);
+    free(binary);
+}
+
+static void test_directive_encoding(void) {
+    char source[] = ".byte 0x12\n"
+                    ".hword 0x1234\n"
+                    ".word 0x12345678\n"
+                    ".dword 0x0123456789abcdef\n"
+                    ".ascii 0x1234, 'A', \"BC\"\n"
+                    ".asciiz \"X\"\n"
+                    ".space 2\n";
+    const byte expected[] = {0x12, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x89, 0x67,
+                             0x45, 0x23, 0x01, 0x34, 0x41, 0x42, 0x43, 0x58, 0x00, 0x00, 0x00};
+    size_t binary_size = 0;
+    byte *binary = assemblySource(source, &binary_size);
+    assert(binary_size == sizeof expected);
+    assert(memcmp(binary, expected, sizeof expected) == 0);
+    free(binary);
+}
+
+static void test_instruction_fetch(void) {
+    const byte image[] = {0xFF, 0x07, 0x01, 0x0A, 0x0B, 0x78, 0x56, 0x34, 0x12};
+    VirtualMachine vm;
+    initialize_vm(&vm, 8);
+    vm_loadDump(&vm, image, sizeof image);
+    vm._registers[R_PC].word_ = 1;
+
+    Instruction fetched = vm_fetch_instruction(&vm);
+    assert(fetched.opcode_ == MOVI);
+    assert(fetched.condition_ == C_ZERO_SET);
+    assert(fetched.register1 == R_T0);
+    assert(fetched.register2 == R_T1);
+    assert(fetched.immediate == 0x12345678);
+    assert(vm._registers[R_PC].word_ == 1 + ZLVM_INSTRUCTION_SIZE);
+    vm_destroy(&vm);
+}
+
+static void test_decoded_instruction_validation(void) {
+    const byte invalid[][ZLVM_INSTRUCTION_SIZE] = {
+        {0xFF, C_UNCONDITIONAL, R_ZERO, R_ZERO, 0, 0, 0, 0},
+        {NOP, 0xFF, R_ZERO, R_ZERO, 0, 0, 0, 0},
+        {NOP, C_UNCONDITIONAL, R_TOTAL, R_ZERO, 0, 0, 0, 0},
+    };
+    const State expected[] = {
+        S_ERR_INVALID_OPCODE,
+        S_ERR_INVALID_CONDITION,
+        S_ERR_INVALID_OPCODE,
+    };
+
+    for (size_t index = 0; index < sizeof invalid / sizeof invalid[0]; index++) {
+        VirtualMachine vm;
+        initialize_vm(&vm, 8);
+        vm_run_instruction(&vm, instruction_decode(invalid[index]));
+        assert(vm_get_state(&vm) == expected[index]);
+        vm_destroy(&vm);
+    }
+}
+
+static void test_little_endian_memory(void) {
+    VirtualMachine vm;
+    initialize_vm(&vm, 32);
+    size_t address = ZLVM_ROM_SIZE + 1;
+
+    vm_write_dword(&vm, address, 0x0123456789ABCDEF);
+    const byte expected[] = {0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01};
+    assert(memcmp(vm._memory + 1, expected, sizeof expected) == 0);
+    assert(vm_read_hword(&vm, address) == 0xCDEF);
+    assert(vm_read_word(&vm, address) == 0x89ABCDEF);
+    assert(vm_read_dword(&vm, address) == 0x0123456789ABCDEF);
+
+    vm._registers[R_T0].word_ = 0xAABBCCDD;
+    vm._registers[R_T1].word_ = (word)address + 8;
+    vm_run_instruction(&vm, instruction(STOREB, R_T0, R_T1, 0));
+    vm_run_instruction(&vm, instruction(STOREH, R_T0, R_T1, 1));
+    assert(vm._memory[9] == 0xDD);
+    assert(vm._memory[10] == 0xDD && vm._memory[11] == 0xCC);
+
+    vm._registers[R_T2].word_ = 0xFFFF0000;
+    vm_run_instruction(&vm, instruction(LOADH, R_T2, R_T1, 1));
+    assert(vm._registers[R_T2].word_ == 0xFFFFCCDD);
+    vm_destroy(&vm);
+}
+
+static void test_directive_vm_integration(void) {
+    char source[] = ".hword 0x1234\n.word 0x89abcdef\n";
+    size_t binary_size = 0;
+    byte *binary = assemblySource(source, &binary_size);
+    VirtualMachine vm;
+    initialize_vm(&vm, 8);
+    vm_loadDump(&vm, binary, binary_size);
+    free(binary);
+
+    vm._registers[R_T0].word_ = 0;
+    vm_run_instruction(&vm, instruction(LOADH, R_T1, R_T0, 0));
+    vm_run_instruction(&vm, instruction(LOADW, R_T2, R_T0, 2));
+    assert(vm._registers[R_T1].word_ == 0x1234);
+    assert(vm._registers[R_T2].word_ == 0x89ABCDEF);
+    vm_destroy(&vm);
 }
 
 static void test_every_opcode_dispatches(void) {
@@ -277,7 +409,14 @@ static void test_vm_errors_are_atomic(void) {
 }
 
 int main(void) {
+    test_instruction_codec();
     test_assembler_accepts_every_opcode();
+    test_assembler_layout();
+    test_directive_encoding();
+    test_instruction_fetch();
+    test_decoded_instruction_validation();
+    test_little_endian_memory();
+    test_directive_vm_integration();
     test_every_opcode_dispatches();
     test_arithmetic_and_flags();
     test_instruction_effects();
