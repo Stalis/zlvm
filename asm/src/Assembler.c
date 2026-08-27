@@ -148,7 +148,7 @@ void asm_processLabels(AssemblerContext *context) {
             labelTable_setOrCreate(context->labels, asm_strdup(last->value->label), address);
         }
         if (last->value->type == L_STMT) {
-            address += sizeof(Instruction);
+            address += ZLVM_INSTRUCTION_SIZE;
         } else if (last->value->type == L_RAW) {
             address += last->value->raw->size;
         }
@@ -166,6 +166,7 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
         const byte *data = NULL;
         size_t data_size = 0;
         Instruction instruction = {0};
+        byte encoded_instruction[ZLVM_INSTRUCTION_SIZE];
 
         if (current->value->type == L_STMT) {
             Statement *statement = current->value->stmt;
@@ -204,8 +205,12 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
                 }
             }
 
-            data = (const byte *)&instruction;
-            data_size = sizeof instruction;
+            if (!instruction_encode(encoded_instruction, sizeof encoded_instruction,
+                                    &instruction)) {
+                ZLASM_CRASH("Assembler error: instruction encoding failed");
+            }
+            data = encoded_instruction;
+            data_size = ZLVM_INSTRUCTION_SIZE;
         } else if (current->value->type == L_RAW) {
             data = current->value->raw->data;
             data_size = current->value->raw->size;

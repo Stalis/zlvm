@@ -11,7 +11,7 @@ static void print_state(State state);
 int main(int argc, char **argv) {
     const size_t memory_size = 4096;
 
-    printf("Size of Instruction: %zu bytes\n", sizeof(Instruction));
+    printf("Encoded instruction size: %d bytes\n", ZLVM_INSTRUCTION_SIZE);
     printf("Operations count: %d\n", OPCODE_TOTAL);
     printf("Size of machine word: %d bytes\n", ZLVM_WORD_SIZE);
     printf("ROM size: %d bytes\n", ZLVM_ROM_SIZE);
