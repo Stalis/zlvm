@@ -102,10 +102,32 @@ endif()
 compare_output("stdout" "${source_stdout}" "${binary_stdout}")
 compare_output("stderr" "${source_stderr}" "${binary_stderr}")
 
+string(REPLACE "\r\n" "\n" normalized_output "${source_output}")
+set(separator "==========================================\n")
+string(FIND "${normalized_output}" "${separator}" first_separator)
+if(first_separator EQUAL -1)
+    message(FATAL_ERROR "Missing CLI output separator:\n${source_output}")
+endif()
+string(LENGTH "${separator}" separator_length)
+math(EXPR program_start "${first_separator} + ${separator_length}")
+string(SUBSTRING "${normalized_output}" ${program_start} -1 output_after_header)
+string(FIND "${output_after_header}" "${separator}" result_separator)
+if(result_separator EQUAL -1)
+    message(FATAL_ERROR "Missing CLI result separator:\n${source_output}")
+endif()
+string(SUBSTRING "${output_after_header}" 0 ${result_separator} program_output)
+
+string(FIND "${program_output}" "[r0]:" debug_output)
+if(NOT debug_output EQUAL -1)
+    string(SUBSTRING "${program_output}" 0 ${debug_output} program_output)
+endif()
+
 set(expected_program_output "Hello, World!\n\nBye!\n\n")
-string(FIND "${source_output}" "${expected_program_output}" program_output_index)
-if(program_output_index EQUAL -1)
-    message(FATAL_ERROR "Missing exact program output 'Hello, World!\\n\\nBye!\\n\\n':\n${source_output}")
+if(NOT program_output STREQUAL expected_program_output)
+    message(
+        FATAL_ERROR
+        "Program output differs: expected 'Hello, World!\\n\\nBye!\\n\\n', got:\n${program_output}"
+    )
 endif()
 
 function(expect_cli_failure name expected_error)

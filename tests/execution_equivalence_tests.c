@@ -1,9 +1,11 @@
-#include "VirtualMachineInternal.h"
-#include "asm/zlasm.h"
-
+// clang-format off
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "VirtualMachineInternal.h"
+#include "asm/zlasm.h"
+// clang-format on
 
 static const char *const register_names[R_TOTAL] = {
     "R_ZERO", "R_AT", "R_V0", "R_V1", "R_V2", "R_V3", "R_A0", "R_A1", "R_A2", "R_A3", "R_T0",
@@ -52,14 +54,18 @@ static byte *read_file(const char *path, size_t *file_size, bool terminate) {
     }
     if (fseek(file, 0, SEEK_END) != 0) {
         fprintf(stderr, "Unable to seek fixture: %s\n", path);
-        fclose(file);
+        if (fclose(file) != 0) {
+            fprintf(stderr, "Unable to close fixture: %s\n", path);
+        }
         return NULL;
     }
 
     long length = ftell(file);
     if (length < 0 || fseek(file, 0, SEEK_SET) != 0) {
         fprintf(stderr, "Unable to determine fixture size: %s\n", path);
-        fclose(file);
+        if (fclose(file) != 0) {
+            fprintf(stderr, "Unable to close fixture: %s\n", path);
+        }
         return NULL;
     }
 
@@ -67,7 +73,9 @@ static byte *read_file(const char *path, size_t *file_size, bool terminate) {
     byte *contents = malloc(size + (terminate ? 1 : 0));
     if (contents == NULL) {
         fprintf(stderr, "Unable to allocate %zu bytes for fixture: %s\n", size, path);
-        fclose(file);
+        if (fclose(file) != 0) {
+            fprintf(stderr, "Unable to close fixture: %s\n", path);
+        }
         return NULL;
     }
     bool read_failed = fread(contents, 1, size, file) != size;
