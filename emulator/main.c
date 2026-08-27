@@ -21,9 +21,9 @@ int main(int argc, char **argv) {
     printf("Stack size: %d bytes\n", ZLVM_STACK_SIZE);
     printf("==========================================\n");
 
-    bool binary_mode = argc == 3 && strcmp(argv[1], "--binary") == 0;
-    bool source_mode = argc == 2 && argv[1][0] != '-';
-    if (!source_mode && !binary_mode) {
+    bool is_binary_mode = argc == 3 && strcmp(argv[1], "--binary") == 0;
+    bool is_source_mode = argc == 2 && strcmp(argv[1], "--binary") != 0;
+    if (!is_source_mode && !is_binary_mode) {
         fprintf(stderr, "Usage: %s <assembly-file>\n       %s --binary <binary-file>\n", argv[0],
                 argv[0]);
         return EXIT_FAILURE;
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 
     size_t binary_size = 0;
     byte *binary =
-        binary_mode ? read_binary(argv[2], &binary_size) : read_source(argv[1], &binary_size);
+        is_binary_mode ? read_binary(argv[2], &binary_size) : read_source(argv[1], &binary_size);
 
     VirtualMachine vm = {0};
     vm_initialize(&vm, memory_size);
@@ -100,7 +100,7 @@ static byte *read_binary(const char *path, size_t *binary_size) {
     }
 
     byte *binary = vm_malloc(ZLVM_ROM_SIZE + 1);
-    size_t size = fread(binary, 1, ZLVM_ROM_SIZE + 1, file);
+    size_t image_size = fread(binary, 1, ZLVM_ROM_SIZE + 1, file);
     bool read_failed = ferror(file);
     bool close_failed = fclose(file) != 0;
 
@@ -114,18 +114,18 @@ static byte *read_binary(const char *path, size_t *binary_size) {
         free(binary);
         exit(EXIT_FAILURE);
     }
-    if (size == 0) {
+    if (image_size == 0) {
         fprintf(stderr, "Binary image is empty: %s\n", path);
         free(binary);
         exit(EXIT_FAILURE);
     }
-    if (size > ZLVM_ROM_SIZE) {
+    if (image_size > ZLVM_ROM_SIZE) {
         fprintf(stderr, "Binary image exceeds ROM size: %s\n", path);
         free(binary);
         exit(EXIT_FAILURE);
     }
 
-    *binary_size = size;
+    *binary_size = image_size;
     return binary;
 }
 

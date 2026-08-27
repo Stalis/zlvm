@@ -85,9 +85,25 @@ endfunction()
 
 expect_cli_failure("no arguments" "Usage:")
 expect_cli_failure("missing binary path" "Usage:" --binary)
-expect_cli_failure("malformed binary option" "Usage:" "--binary=${test_binary}")
 expect_cli_failure("extra source argument" "Usage:" "${ZLVM_TEST_PROGRAM}" extra)
 expect_cli_failure("extra binary argument" "Usage:" --binary "${test_binary}" extra)
+
+set(dash_source "${ZLVM_TEST_DIR}/-test.asm")
+file(COPY_FILE "${ZLVM_TEST_PROGRAM}" "${dash_source}")
+execute_process(
+    COMMAND "${ZLVM_EXECUTABLE}" -test.asm
+    WORKING_DIRECTORY "${ZLVM_TEST_DIR}"
+    RESULT_VARIABLE dash_source_result
+    OUTPUT_VARIABLE dash_source_output
+    ERROR_VARIABLE dash_source_error
+)
+if(NOT dash_source_result EQUAL 0 OR NOT "${dash_source_output}" STREQUAL "${source_output}")
+    message(
+        FATAL_ERROR
+        "Leading-dash source failed with status ${dash_source_result}:\n"
+        "${dash_source_error}\n${dash_source_output}"
+    )
+endif()
 
 set(missing_binary "${ZLVM_TEST_DIR}/missing.bin")
 file(REMOVE "${missing_binary}")
