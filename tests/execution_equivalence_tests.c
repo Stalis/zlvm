@@ -69,8 +69,17 @@ static byte *read_file(const char *path, size_t *file_size, bool terminate) {
         return NULL;
     }
 
+    size_t terminator_size = terminate ? 1 : 0;
+    if ((uintmax_t)length > SIZE_MAX - terminator_size) {
+        fprintf(stderr, "Fixture is too large: %s\n", path);
+        if (fclose(file) != 0) {
+            fprintf(stderr, "Unable to close fixture: %s\n", path);
+        }
+        return NULL;
+    }
+
     size_t size = (size_t)length;
-    byte *contents = malloc(size + (terminate ? 1 : 0));
+    byte *contents = malloc(size + terminator_size);
     if (contents == NULL) {
         fprintf(stderr, "Unable to allocate %zu bytes for fixture: %s\n", size, path);
         if (fclose(file) != 0) {
@@ -80,8 +89,13 @@ static byte *read_file(const char *path, size_t *file_size, bool terminate) {
     }
     bool read_failed = fread(contents, 1, size, file) != size;
     bool close_failed = fclose(file) != 0;
-    if (read_failed || close_failed) {
+    if (read_failed) {
         fprintf(stderr, "Unable to read fixture: %s\n", path);
+    }
+    if (close_failed) {
+        fprintf(stderr, "Unable to close fixture: %s\n", path);
+    }
+    if (read_failed || close_failed) {
         free(contents);
         return NULL;
     }
