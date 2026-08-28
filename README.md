@@ -144,7 +144,7 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
 - [x] Remove the Debug-only parser path that executes the program and exits before writing a file.
 - [x] Replace native-structure serialization with a fixed-width, explicitly endian-defined binary
   encoding shared by the assembler and VM loader.
-- [ ] Prove source and binary execution are equivalent by comparing output, halt state, registers,
+- [x] Prove source and binary execution are equivalent by comparing output, halt state, registers,
   and relevant memory.
 
 ### Milestone 3: Assembler and ISA completion

@@ -1,3 +1,12 @@
+set(ZLVM_TEST_BINARY ${CMAKE_CURRENT_BINARY_DIR}/test.bin)
+
+add_test(
+    NAME zlasm.test-asm-fixture
+    COMMAND
+        $<TARGET_FILE:zlasm-bin> ${CMAKE_SOURCE_DIR}/test.asm -o ${ZLVM_TEST_BINARY}
+)
+set_tests_properties(zlasm.test-asm-fixture PROPERTIES FIXTURES_SETUP zlvm-test-asm-binary)
+
 add_test(
     NAME zlvm.test-asm
     COMMAND
@@ -5,9 +14,25 @@ add_test(
         -DZLVM_EXECUTABLE=$<TARGET_FILE:zlvm-bin>
         -DZLASM_EXECUTABLE=$<TARGET_FILE:zlasm-bin>
         -DZLVM_TEST_PROGRAM=${CMAKE_SOURCE_DIR}/test.asm
+        -DZLVM_TEST_BINARY=${ZLVM_TEST_BINARY}
         -DZLVM_TEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli-fixtures
         -P ${CMAKE_CURRENT_LIST_DIR}/run_test_asm.cmake
 )
+set_tests_properties(zlvm.test-asm PROPERTIES FIXTURES_REQUIRED zlvm-test-asm-binary)
+
+add_executable(zlvm-execution-equivalence-tests execution_equivalence_tests.c)
+target_include_directories(
+    zlvm-execution-equivalence-tests
+    PRIVATE ${CMAKE_SOURCE_DIR}/emulator/src
+)
+target_link_libraries(zlvm-execution-equivalence-tests PRIVATE zlasm-static zlvm-static)
+zlvm_configure_target(zlvm-execution-equivalence-tests)
+add_test(
+    NAME zlvm.execution-equivalence
+    COMMAND
+        zlvm-execution-equivalence-tests ${CMAKE_SOURCE_DIR}/test.asm ${ZLVM_TEST_BINARY}
+)
+set_tests_properties(zlvm.execution-equivalence PROPERTIES FIXTURES_REQUIRED zlvm-test-asm-binary)
 
 add_executable(zlvm-instruction-tests instruction_tests.c)
 target_include_directories(zlvm-instruction-tests PRIVATE ${CMAKE_SOURCE_DIR}/emulator/src)
