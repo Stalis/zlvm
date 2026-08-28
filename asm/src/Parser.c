@@ -87,7 +87,7 @@ static Statement *parser_read_statement(TokenStream *stream, Token *current) {
     }
 
     if (current != NULL) {
-        ZLASM_TOKEN_CRASH("Unexpected trailing token", current);
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN, "Unexpected trailing token", current);
     }
 
     return statement;
@@ -96,7 +96,7 @@ static Statement *parser_read_statement(TokenStream *stream, Token *current) {
 static Directive *parser_read_directive(TokenStream *stream, Token *current) {
     Directive *directive = asm_malloc(sizeof *directive);
     if (!directive_init(directive, current)) {
-        ZLASM_TOKEN_CRASH("Unknown directive", current);
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_DIRECTIVE, "Unknown directive", current);
     }
 
     for (current = read_token(stream); current != NULL; current = read_token(stream)) {
@@ -110,12 +110,17 @@ static Line *parser_read_line(TokenStream *stream) {
     Token *current = read_token(stream);
 
     if (current != NULL && current->type == TOK_LABEL_INIT) {
+        Token *label = current;
         line->label = current->value;
         current = read_token(stream);
+        if (current == NULL) {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN,
+                             "Label is not followed by a statement or directive", label);
+        }
     }
 
     if (current == NULL) {
-        ZLASM_CRASH("Label is not followed by a statement or directive");
+        ZLASM_FAIL(ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN, "Expected a statement or directive");
     }
 
     switch (current->type) {
@@ -128,7 +133,7 @@ static Line *parser_read_line(TokenStream *stream) {
             line->dir = parser_read_directive(stream, current);
             break;
         default:
-            ZLASM_TOKEN_CRASH("Unexpected token", current);
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN, "Unexpected token", current);
     }
 
     return line;

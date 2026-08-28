@@ -13,6 +13,7 @@ bool directive_init(Directive *directive, Token *name) {
     assert(directive != NULL);
 
     directive->type = get_directive_type(name);
+    directive->name = name;
     directive->argc = 0;
     directive->argv = NULL;
     return directive->type != DIR_TOTAL;
@@ -20,7 +21,7 @@ bool directive_init(Directive *directive, Token *name) {
 
 void directive_add_arg(Directive *directive, Token *argument) {
     if (directive == NULL) {
-        ZLASM_TOKEN_CRASH("Directive is null", argument);
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INTERNAL_ERROR, "Directive is null", argument);
     }
 
     size_t new_count = directive->argc + 1;
@@ -76,12 +77,24 @@ byte *directive_get_raw_data(Directive *directive, size_t *output_size) {
                 } else {
                     value_size = 1;
                     value = asm_malloc(value_size);
-                    *value = directive->argv[index]->type == TOK_CHAR_LITERAL
-                                 ? (byte)token_get_char_value(directive->argv[index]->value)
-                                 : (byte)token_get_int_value(directive->argv[index]);
+                    if (directive->argv[index]->type == TOK_CHAR_LITERAL) {
+                        *value = (byte)token_get_char_value(directive->argv[index]);
+                    } else {
+                        dword numeric_value = token_get_int_value(directive->argv[index]);
+                        if (numeric_value > BYTE_MAX) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                                             "Value does not fit in a byte",
+                                             directive->argv[index]);
+                        }
+                        *value = (byte)numeric_value;
+                    }
                 }
 
                 size_t previous_size = *output_size;
+                if (value_size > SIZE_MAX - previous_size) {
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE,
+                                     "Data directive is too large", directive->name);
+                }
                 *output_size += value_size;
                 result = asm_realloc(result, *output_size);
                 memcpy(result + previous_size, value, value_size);
@@ -89,6 +102,10 @@ byte *directive_get_raw_data(Directive *directive, size_t *output_size) {
             }
 
             if (directive->type == DIR_ASCIIZ) {
+                if (*output_size == SIZE_MAX) {
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE,
+                                     "Data directive is too large", directive->name);
+                }
                 result = asm_realloc(result, *output_size + 1);
                 result[*output_size] = '\0';
                 (*output_size)++;
@@ -105,19 +122,27 @@ byte *directive_get_raw_data(Directive *directive, size_t *output_size) {
             return encode_numeric_data(directive, sizeof(dword), DWORD_MAX, output_size);
         case DIR_SPACE:
             if (directive->argc != 1) {
-                ZLASM_CRASH(".space expects exactly one argument");
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                 ".space expects exactly one argument", directive->name);
             }
-            *output_size = (size_t)token_get_int_value(directive->argv[0]);
+            dword value = token_get_int_value(directive->argv[0]);
+            if (value > SIZE_MAX) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                                 ".space size exceeds the host size limit", directive->argv[0]);
+            }
+            *output_size = (size_t)value;
             return asm_calloc(*output_size, sizeof(byte));
         default:
-            ZLASM_CRASH("Directive does not emit raw data");
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INTERNAL_ERROR, "Directive does not emit raw data",
+                             directive->name);
     }
 }
 
 static byte *encode_numeric_data(const Directive *directive, size_t element_size,
                                  dword maximum_value, size_t *output_size) {
     if (directive->argc > SIZE_MAX / element_size) {
-        ZLASM_CRASH("Data directive is too large");
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE, "Data directive is too large",
+                         directive->name);
     }
 
     *output_size = directive->argc * element_size;
@@ -125,11 +150,12 @@ static byte *encode_numeric_data(const Directive *directive, size_t element_size
 
     for (size_t index = 0; index < directive->argc; index++) {
         dword value = directive->argv[index]->type == TOK_CHAR_LITERAL
-                          ? (byte)token_get_char_value(directive->argv[index]->value)
+                          ? (byte)token_get_char_value(directive->argv[index])
                           : token_get_int_value(directive->argv[index]);
 
         if (value > maximum_value) {
-            ZLASM_TOKEN_CRASH("Value does not fit the directive width", directive->argv[index]);
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                             "Value does not fit the directive width", directive->argv[index]);
         }
         for (size_t byte_index = 0; byte_index < element_size; byte_index++) {
             result[index * element_size + byte_index] = (byte)(value >> (byte_index * 8));

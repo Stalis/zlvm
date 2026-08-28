@@ -36,6 +36,7 @@ typedef struct Token {
     size_t pos;
     size_t line;
     size_t col;
+    size_t source_size;
 } Token;
 
 /**
@@ -50,7 +51,7 @@ void token_free(Token *);
 
 dword token_get_int_value(Token *token);
 
-char token_get_char_value(char *value);
+char token_get_char_value(Token *token);
 
 byte *token_get_string_value(char *value, size_t *output_size);
 

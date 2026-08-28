@@ -9,6 +9,7 @@
 static byte *read_source(const char *path, size_t *binary_size);
 static byte *read_binary(const char *path, size_t *binary_size);
 static void print_state(State state);
+static void print_diagnostic(const ZlasmDiagnostic *diagnostic);
 
 int main(int argc, char **argv) {
     const size_t memory_size = 4096;
@@ -87,9 +88,14 @@ static byte *read_source(const char *path, size_t *binary_size) {
     }
 
     source[length] = '\0';
-    byte *binary = assemblySource(source, binary_size);
+    ZlasmResult result = zlasm_assemble(source, path);
     free(source);
-    return binary;
+    if (result.diagnostic.code != ZLASM_DIAGNOSTIC_NONE) {
+        print_diagnostic(&result.diagnostic);
+        exit(EXIT_FAILURE);
+    }
+    *binary_size = result.binary_size;
+    return result.binary;
 }
 
 static byte *read_binary(const char *path, size_t *binary_size) {
@@ -160,4 +166,16 @@ static void print_state(State state) {
             break;
     }
     printf("\n");
+}
+
+static void print_diagnostic(const ZlasmDiagnostic *diagnostic) {
+    if (diagnostic->has_source_location) {
+        fprintf(stderr, "%s:%zu:%zu: error ZLASM%04d: %s [bytes %zu..%zu)\n",
+                diagnostic->source_filename, diagnostic->line, diagnostic->column,
+                (int)diagnostic->code, diagnostic->message, diagnostic->byte_offset,
+                diagnostic->byte_offset + diagnostic->byte_length);
+    } else {
+        fprintf(stderr, "%s: error ZLASM%04d: %s\n", diagnostic->source_filename,
+                (int)diagnostic->code, diagnostic->message);
+    }
 }

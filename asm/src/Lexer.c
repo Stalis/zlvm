@@ -24,12 +24,13 @@ enum {
 
 static bool is_eof(char character);
 static bool is_ignored_char(char character);
-static bool is_hex_char(char character);
 static bool is_dec_char(char character);
-static bool is_oct_char(char character);
-static bool is_bin_char(char character);
+static bool is_token_end(char character);
+static bool is_digit_for_base(char character, int base);
 
 static void remove_digit_delimiters(char *string, size_t size);
+static void validate_numeric_token(Token *token, const char *digits, size_t digits_size, int base);
+static void validate_numeric_value(Token *token);
 
 static void token_list_add(struct TokenList *, struct Token *);
 static void token_list_free(struct TokenList *);
@@ -79,14 +80,14 @@ char lexer_nextChar(LexerState *state) {
         return 0;
     }
 
-    char value = state->source[++state->pos];
+    char value = state->source[state->pos++];
     if (value == '\n') {
         state->line++;
         state->col = 1;
     } else {
         state->col++;
     }
-    return value;
+    return state->source[state->pos];
 }
 
 char *lexer_ahead(LexerState *state) {
@@ -103,10 +104,6 @@ Token *lexer_readToken(LexerState *state) {
     enum TokenType type;
     struct Token *result;
 
-    size_t position = state->pos;
-    size_t line = state->line;
-    size_t column = state->col;
-
     while (is_ignored_char(c)) {
         c = lexer_nextChar(state);
 
@@ -114,6 +111,10 @@ Token *lexer_readToken(LexerState *state) {
             return NULL;
         }
     }
+
+    size_t position = state->pos;
+    size_t line = state->line;
+    size_t column = state->col;
 
     first = CURRENT;
     c = lexer_peekChar(state);
@@ -170,12 +171,18 @@ Token *lexer_readToken(LexerState *state) {
             first = state->source + state->pos;
             while (c != STRING_QUOTE) {
                 if (is_eof(c)) {
-                    ZLASM_CRASH("Unterminated string literal");
+                    Token token = {.pos = position,
+                                   .line = line,
+                                   .col = column,
+                                   .source_size = state->pos - position};
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
+                                     "Unterminated string literal", &token);
                 }
                 c = lexer_nextChar(state);
             }
             type = TOK_STRING_LITERAL;
-            last = state->source + state->pos++;
+            last = state->source + state->pos;
+            lexer_nextChar(state);
             break;
 
         case CHAR_QUOTE:
@@ -183,12 +190,18 @@ Token *lexer_readToken(LexerState *state) {
             first = state->source + state->pos;
             while (c != CHAR_QUOTE) {
                 if (is_eof(c)) {
-                    ZLASM_CRASH("Unterminated character literal");
+                    Token token = {.pos = position,
+                                   .line = line,
+                                   .col = column,
+                                   .source_size = state->pos - position};
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
+                                     "Unterminated character literal", &token);
                 }
                 c = lexer_nextChar(state);
             }
             type = TOK_CHAR_LITERAL;
-            last = state->source + state->pos++;
+            last = state->source + state->pos;
+            lexer_nextChar(state);
             break;
 
         default: {
@@ -203,23 +216,23 @@ Token *lexer_readToken(LexerState *state) {
                     c = lexer_peekChar(state);
 
                     if (prefix == 'x' || prefix == 'X') {
-                        while (is_hex_char(c)) {
+                        while (!is_token_end(c)) {
                             c = lexer_nextChar(state);
                         }
                         type = TOK_INT_HEX;
                     } else if (prefix == 'o' || prefix == 'O') {
-                        while (is_oct_char(c)) {
+                        while (!is_token_end(c)) {
                             c = lexer_nextChar(state);
                         }
                         type = TOK_INT_OCT;
                     } else {
-                        while (is_bin_char(c)) {
+                        while (!is_token_end(c)) {
                             c = lexer_nextChar(state);
                         }
                         type = TOK_INT_BIN;
                     }
                 } else {
-                    while (is_dec_char(c)) {
+                    while (!is_token_end(c)) {
                         c = lexer_nextChar(state);
                     }
                     type = TOK_INT_DEC;
@@ -252,15 +265,37 @@ Token *lexer_readToken(LexerState *state) {
     result->pos = position;
     result->line = line;
     result->col = column;
+    result->source_size = state->pos - position;
 
     switch (result->type) {
         case TOK_INT_HEX:
-        case TOK_INT_DEC:
-        case TOK_INT_OCT:
-        case TOK_INT_BIN:
+            validate_numeric_token(result, first, value_size, 16);
             remove_digit_delimiters(result->value, result->size);
             result->size = strlen(result->value);
             result->value = asm_realloc(result->value, result->size + 1);
+            validate_numeric_value(result);
+            break;
+        case TOK_INT_DEC:
+            validate_numeric_token(result, first, value_size, 10);
+            remove_digit_delimiters(result->value, result->size);
+            result->size = strlen(result->value);
+            result->value = asm_realloc(result->value, result->size + 1);
+            validate_numeric_value(result);
+            break;
+        case TOK_INT_OCT:
+            validate_numeric_token(result, first, value_size, 8);
+            remove_digit_delimiters(result->value, result->size);
+            result->size = strlen(result->value);
+            result->value = asm_realloc(result->value, result->size + 1);
+            validate_numeric_value(result);
+            break;
+        case TOK_INT_BIN:
+            validate_numeric_token(result, first, value_size, 2);
+            remove_digit_delimiters(result->value, result->size);
+            result->size = strlen(result->value);
+            result->value = asm_realloc(result->value, result->size + 1);
+            validate_numeric_value(result);
+            break;
         default:
             break;
     }
@@ -291,20 +326,41 @@ static bool is_ignored_char(char character) {
     return (isspace((unsigned char)character) != 0 && character != NEWLINE) || is_eof(character);
 }
 
-static bool is_hex_char(char character) {
-    return isxdigit((unsigned char)character) != 0 || character == DIGIT_DELIMITER;
-}
-
 static bool is_dec_char(char character) {
     return isdigit((unsigned char)character) != 0 || character == DIGIT_DELIMITER;
 }
 
-static bool is_oct_char(char character) {
-    return (character >= '0' && character <= '7') || character == DIGIT_DELIMITER;
+static bool is_token_end(char character) {
+    return is_ignored_char(character) || character == NEWLINE || character == COMMA ||
+           character == COMMENT_MARK;
 }
 
-static bool is_bin_char(char character) {
-    return (character >= '0' && character <= '1') || character == DIGIT_DELIMITER;
+static bool is_digit_for_base(char character, int base) {
+    if (character >= '0' && character <= '9') {
+        return character - '0' < base;
+    }
+    character = (char)tolower((unsigned char)character);
+    return base == 16 && character >= 'a' && character <= 'f';
+}
+
+static void validate_numeric_token(Token *token, const char *digits, size_t digits_size, int base) {
+    if (digits_size == 0) {
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Malformed numeric literal", token);
+    }
+
+    for (size_t index = 0; index < digits_size; index++) {
+        bool is_delimiter = digits[index] == DIGIT_DELIMITER;
+        if ((!is_delimiter && !is_digit_for_base(digits[index], base)) ||
+            (is_delimiter && (index == 0 || index + 1 == digits_size ||
+                              !is_digit_for_base(digits[index - 1], base) ||
+                              !is_digit_for_base(digits[index + 1], base)))) {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Malformed numeric literal", token);
+        }
+    }
+}
+
+static void validate_numeric_value(Token *token) {
+    (void)token_get_int_value(token);
 }
 
 static void remove_digit_delimiters(char *string, size_t size) {

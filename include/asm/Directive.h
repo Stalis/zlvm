@@ -33,6 +33,7 @@ typedef enum DirectiveType {
 
 typedef struct Directive {
     DirectiveType type;
+    Token *name;
     size_t argc;
     Token **argv;
 } Directive;

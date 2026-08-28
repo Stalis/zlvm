@@ -175,7 +175,7 @@ static void test_directive_encoding(void) {
                     ".hword 0x1234\n"
                     ".word 0x12345678\n"
                     ".dword 0x0123456789abcdef\n"
-                    ".ascii 0x1234, 'A', \"BC\"\n"
+                    ".ascii 0x34, 'A', \"BC\"\n"
                     ".asciiz \"X\"\n"
                     ".space 2\n";
     const byte expected[] = {0x12, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x89, 0x67,
