@@ -1,10 +1,10 @@
-#include "VirtualMachine.h"
-#include "asm/zlasm.h"
-#include "src/Memory.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "VirtualMachine.h"
+#include "asm/zlasm.h"
+#include "src/Memory.h"
 
 static byte *read_source(const char *path, size_t *binary_size);
 static byte *read_binary(const char *path, size_t *binary_size);

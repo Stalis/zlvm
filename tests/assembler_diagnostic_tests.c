@@ -1,10 +1,10 @@
-#include "asm/zlasm.h"
-
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
 #include <assert.h>
 #include <string.h>
+
+#include "asm/zlasm.h"
 
 static void expect_failure(const char *source, ZlasmDiagnosticCode code, size_t line, size_t column,
                            size_t byte_offset, size_t byte_length) {

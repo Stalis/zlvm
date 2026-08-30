@@ -9,7 +9,6 @@
 
 #include "Error.h"
 #include "Memory.h"
-
 #include <Assembler.h>
 #include <Lexer.h>
 #include <Parser.h>
