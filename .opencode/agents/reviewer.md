@@ -42,6 +42,7 @@ fails, leave the change unmerged and report the blocker. After a successful merg
 provider, repository, target, strategy, resulting URL, and merge commit SHA when available.
 
 If authentication, permissions, stale diff state, tooling, or provider support prevents
-publication, do not attempt a destructive workaround or expose credentials. Return the feedback as
-a provider-ready draft instead. After publishing, report the provider, repository, target, action,
-and resulting URL when available.
+publication, do not attempt a destructive workaround or expose credentials. Report the exact
+blocker and the corrective action the user should take, and return the feedback as a provider-ready
+draft. After publishing, report the provider, repository, target, action, and resulting URL when
+available.
