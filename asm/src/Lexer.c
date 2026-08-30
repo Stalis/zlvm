@@ -3,11 +3,11 @@
 
 #include "Lexer.h"
 
-#include "Memory.h"
-
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "Memory.h"
 
 enum {
     NEWLINE = '\n',

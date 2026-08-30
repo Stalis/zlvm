@@ -1,9 +1,9 @@
 #include "Directive.h"
 
-#include "Memory.h"
-
 #include <assert.h>
 #include <string.h>
+
+#include "Memory.h"
 
 static DirectiveType get_directive_type(const Token *token);
 static byte *encode_numeric_data(const Directive *directive, size_t element_size,

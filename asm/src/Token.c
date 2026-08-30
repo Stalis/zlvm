@@ -1,9 +1,9 @@
 #include "Token.h"
 
-#include "Memory.h"
-
 #include <stdio.h>
 #include <string.h>
+
+#include "Memory.h"
 
 static const char *get_token_type_name(TokenType type);
 

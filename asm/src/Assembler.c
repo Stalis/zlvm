@@ -3,13 +3,13 @@
 
 #include "Assembler.h"
 
-#include "Instruction.h"
-#include "Memory.h"
-#include "Registers.h"
-
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "Instruction.h"
+#include "Memory.h"
+#include "Registers.h"
 
 static void line_to_upper(char *line) {
     for (char *character = line; *character != '\0'; character++) {

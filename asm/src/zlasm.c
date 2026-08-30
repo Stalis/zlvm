@@ -4,14 +4,15 @@
 
 #include "zlasm.h"
 
+#include <setjmp.h>
+#include <stdlib.h>
+
 #include "Error.h"
 #include "Memory.h"
 
 #include <Assembler.h>
 #include <Lexer.h>
 #include <Parser.h>
-#include <setjmp.h>
-#include <stdlib.h>
 
 ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
     ZlasmResult result = {0};
