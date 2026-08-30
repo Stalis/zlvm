@@ -1,9 +1,9 @@
 #include "Token.h"
 
-#include "Memory.h"
-
 #include <stdio.h>
 #include <string.h>
+
+#include "Memory.h"
 
 static const char *get_token_type_name(TokenType type);
 
@@ -63,23 +63,64 @@ static const char *get_token_type_name(TokenType type) {
 }
 
 dword token_get_int_value(Token *token) {
+    int base;
     switch (token->type) {
         case TOK_INT_HEX:
-            return strtoull(token->value, NULL, 16);
+            base = 16;
+            break;
         case TOK_INT_DEC:
-            return strtoull(token->value, NULL, 10);
+            base = 10;
+            break;
         case TOK_INT_OCT:
-            return strtoull(token->value, NULL, 8);
+            base = 8;
+            break;
         case TOK_INT_BIN:
-            return strtoull(token->value, NULL, 2);
+            base = 2;
+            break;
         default:
-            ZLASM_TOKEN_CRASH("Token is not an integer", token);
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Token is not an integer", token);
     }
+
+    if (token->value[0] == '\0') {
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Malformed numeric literal", token);
+    }
+
+    dword value = 0;
+    for (const char *character = token->value; *character != '\0'; character++) {
+        unsigned digit;
+        if (*character >= '0' && *character <= '9') {
+            digit = (unsigned)(*character - '0');
+        } else if (*character >= 'a' && *character <= 'f') {
+            digit = (unsigned)(*character - 'a' + 10);
+        } else if (*character >= 'A' && *character <= 'F') {
+            digit = (unsigned)(*character - 'A' + 10);
+        } else {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Malformed numeric literal", token);
+        }
+        if (digit >= (unsigned)base) {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, "Malformed numeric literal", token);
+        }
+        if (value > (DWORD_MAX - digit) / (unsigned)base) {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_NUMBER_OVERFLOW, "Numeric literal overflows 64 bits",
+                             token);
+        }
+        value = value * (unsigned)base + digit;
+    }
+    return value;
 }
 
-char token_get_char_value(char *value) {
+char token_get_char_value(Token *token) {
+    char *value = token->value;
     if (value[0] != '\\') {
+        if (value[0] == '\0' || value[1] != '\0') {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_LITERAL,
+                             "Character literal must contain exactly one character", token);
+        }
         return value[0];
+    }
+
+    if (value[1] == '\0' || value[2] != '\0') {
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_LITERAL, "Malformed character escape", token);
     }
 
     switch (value[1]) {
@@ -100,7 +141,7 @@ char token_get_char_value(char *value) {
         case '\\':
             return '\\';
         default:
-            ZLASM_CRASH("Invalid escape character");
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MALFORMED_LITERAL, "Invalid character escape", token);
     }
 }
 
@@ -118,7 +159,7 @@ byte *token_get_raw_data(Token *token, size_t *output_size) {
         case TOK_CHAR_LITERAL: {
             *output_size = sizeof(byte);
             byte *result = asm_malloc(*output_size);
-            *result = (byte)token_get_char_value(token->value);
+            *result = (byte)token_get_char_value(token);
             return result;
         }
         case TOK_INT_HEX:
@@ -134,6 +175,7 @@ byte *token_get_raw_data(Token *token, size_t *output_size) {
             return result;
         }
         default:
-            ZLASM_TOKEN_CRASH("Token cannot be emitted as raw data", token);
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                             "Token cannot be emitted as raw data", token);
     }
 }

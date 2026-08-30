@@ -1,13 +1,14 @@
-#include "asm/zlasm.h"
-#include "src/Memory.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static byte *read_source(const char *path, size_t *binary_size);
+#include "asm/zlasm.h"
+#include "src/Memory.h"
+
+static ZlasmResult read_source(const char *path);
 static char *derive_output_path(const char *input_path);
 static void write_binary(const char *path, const byte *data, size_t size);
+static void print_diagnostic(const ZlasmDiagnostic *diagnostic);
 
 int main(int argc, char **argv) {
     if (argc != 2 && argc != 4) {
@@ -23,16 +24,20 @@ int main(int argc, char **argv) {
     char *derived_path = NULL;
     const char *output_path = argc == 4 ? argv[3] : (derived_path = derive_output_path(argv[1]));
 
-    size_t binary_size = 0;
-    byte *binary = read_source(argv[1], &binary_size);
-    write_binary(output_path, binary, binary_size);
+    ZlasmResult result = read_source(argv[1]);
+    if (result.diagnostic.code != ZLASM_DIAGNOSTIC_NONE) {
+        print_diagnostic(&result.diagnostic);
+        asm_free(derived_path);
+        return EXIT_FAILURE;
+    }
+    write_binary(output_path, result.binary, result.binary_size);
 
-    asm_free(binary);
+    zlasm_result_free(&result);
     asm_free(derived_path);
     return EXIT_SUCCESS;
 }
 
-static byte *read_source(const char *path, size_t *binary_size) {
+static ZlasmResult read_source(const char *path) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t length = 0;
@@ -70,9 +75,21 @@ static byte *read_source(const char *path, size_t *binary_size) {
     }
 
     source[length] = '\0';
-    byte *binary = assemblySource(source, binary_size);
+    ZlasmResult result = zlasm_assemble(source, path);
     asm_free(source);
-    return binary;
+    return result;
+}
+
+static void print_diagnostic(const ZlasmDiagnostic *diagnostic) {
+    if (diagnostic->has_source_location) {
+        fprintf(stderr, "%s:%zu:%zu: error ZLASM%04d: %s [bytes %zu..%zu)\n",
+                diagnostic->source_filename, diagnostic->line, diagnostic->column,
+                (int)diagnostic->code, diagnostic->message, diagnostic->byte_offset,
+                diagnostic->byte_offset + diagnostic->byte_length);
+    } else {
+        fprintf(stderr, "%s: error ZLASM%04d: %s\n", diagnostic->source_filename,
+                (int)diagnostic->code, diagnostic->message);
+    }
 }
 
 static char *derive_output_path(const char *input_path) {

@@ -40,7 +40,8 @@ native size and representation are not part of the image format.
 ## Registers
 
 Registers can be written using an alias or a numeric spelling such as `$r10`. Numeric registers are
-range-checked, and an unknown alias terminates assembly with a diagnostic.
+required to include at least one decimal digit and are range-checked. An unknown alias fails
+assembly with a diagnostic.
 
 | Index | Alias | Intended role |
 | ---: | --- | --- |
@@ -250,7 +251,9 @@ end:
 
 Underscores are accepted as separators inside numeric literals. Character escapes currently
 include `\n`, `\r`, `\t`, `\a`, `\f`, `\v`, `\b`, and `\\`. String escape processing is not
-implemented.
+implemented. Numeric literals must contain at least one digit, separators must occur between valid
+digits, and values must fit in an unsigned 64-bit integer. Instruction immediates and fixed-width
+data directives apply their narrower range checks after parsing.
 
 ### Directives
 
@@ -270,10 +273,16 @@ implemented.
 | `.dword values...` | Emit 64-bit values | Implemented |
 | `.space size` | Reserve zero-initialized bytes | Implemented |
 | `.proc name` / `.endproc` | Scope local labels | Implemented |
-| `.macro` / `.endmacro` | Define a macro | Markers are removed; macro expansion is not implemented |
+| `.macro name` / `.endmacro` | Define a macro | Markers are removed; macro expansion is not implemented |
+
+Directive arguments are validated before processing. Symbol directives require a symbol, numeric
+directives require numeric values (or character literals for emitted integer data), and `.extern`
+requires its first argument to be a symbol. Additional `.extern` arguments remain accepted for
+compatibility, including `.extern factorial, 0xFF`.
 
 `.hword`, `.word`, and `.dword` values are emitted least-significant byte first. `.byte`, `.ascii`,
-`.asciiz`, and `.space` are byte-oriented. For example:
+`.asciiz`, and `.space` are byte-oriented; integer values emitted by `.byte`, `.ascii`, and
+`.asciiz` must fit in one byte. For example:
 
 ```asm
 .byte  0x12
@@ -290,7 +299,15 @@ aligned.
 
 - ROM images contain no magic value, format version, sections, entry-point metadata, or relocation
   records. Execution starts at byte address zero.
-- Error reporting often exits immediately rather than returning structured diagnostics.
+
+## Assembler diagnostics
+
+The public assembler API returns the first failure as a stable diagnostic code, static message, and
+source filename. Its explicit `has_source_location` field indicates whether the diagnostic also has
+a 1-based line and column and zero-based half-open byte range. Invalid source does not terminate the
+calling process. The `zlasm` and `zlvm` command-line programs format available fields for standard
+error and return a nonzero status. Multi-error recovery, warnings, and localization are not
+supported.
 
 The prioritized implementation sequence and acceptance criteria are maintained in the
 [README roadmap](../README.md#roadmap-running-testasm).

@@ -3,14 +3,13 @@
 
 #include "Assembler.h"
 
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "Instruction.h"
 #include "Memory.h"
 #include "Registers.h"
-
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 static void line_to_upper(char *line) {
     for (char *character = line; *character != '\0'; character++) {
@@ -18,9 +17,10 @@ static void line_to_upper(char *line) {
     }
 }
 
-static Condition parse_condition(const char *string);
-static Register parse_register(const char *string);
+static Condition parse_condition(const Token *token);
+static Register parse_register(const Token *token);
 static void validate_operands(Opcode opcode, Statement *statement);
+static void validate_directive(const Directive *directive);
 
 void asm_init(AssemblerContext *context) {
     context->entry = NULL;
@@ -49,6 +49,7 @@ void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
             line->label = (char *)set_label_context(procedure_context, line->label);
         }
         if (line->type == L_DIR) {
+            validate_directive(line->dir);
             if (is_data_directive(line->dir->type)) {
                 Directive *dir = line->dir;
                 line->type = L_RAW;
@@ -78,7 +79,9 @@ void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
                     break;
                 case DIR_PROC:
                     if (stream->first == NULL || stream->first->value == NULL) {
-                        ZLASM_CRASH(".proc must be followed by a procedure body");
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                         ".proc must be followed by a procedure body",
+                                         line->dir->name);
                     }
                     stream->first->value->label = "";
                     procedure_context = line->dir->argv[0]->value;
@@ -92,7 +95,8 @@ void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
                 case DIR_ENDMACRO:
                     break;
                 default:
-                    ZLASM_CRASH("Invalid directive");
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Invalid directive",
+                                     line->dir->name);
             }
 
             directive_free(line->dir);
@@ -173,33 +177,37 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
             line_to_upper(statement->opcode->value);
             instruction.opcode_ = string_to_opcode(statement->opcode->value);
             if (instruction.opcode_ == OPCODE_TOTAL) {
-                ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_OPCODE, "Unknown opcode",
+                                 statement->opcode);
             }
             validate_operands(instruction.opcode_, statement);
 
             instruction.condition_ =
-                statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond->value);
+                statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond);
             instruction.register1 =
-                statement->reg1 == NULL ? R_ZERO : parse_register(statement->reg1->value);
+                statement->reg1 == NULL ? R_ZERO : parse_register(statement->reg1);
             instruction.register2 =
-                statement->reg2 == NULL ? R_ZERO : parse_register(statement->reg2->value);
+                statement->reg2 == NULL ? R_ZERO : parse_register(statement->reg2);
 
             if (statement->imm != NULL) {
                 if (statement->imm->type == TOK_LABEL_USE) {
                     LabelInfo *label = labelInfo_getIfExist(context->labels, statement->imm->value);
                     if (label == NULL) {
-                        ZLASM_TOKEN_CRASH("Unknown label", statement->imm);
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_LABEL, "Unknown label",
+                                         statement->imm);
                     }
                     if (label->address > WORD_MAX) {
-                        ZLASM_TOKEN_CRASH("Label address exceeds word size", statement->imm);
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                                         "Label address exceeds word size", statement->imm);
                     }
                     instruction.immediate = (word)label->address;
                 } else if (statement->imm->type == TOK_CHAR_LITERAL) {
-                    instruction.immediate = token_get_char_value(statement->imm->value);
+                    instruction.immediate = token_get_char_value(statement->imm);
                 } else {
                     dword value = token_get_int_value(statement->imm);
                     if (value > WORD_MAX) {
-                        ZLASM_TOKEN_CRASH("Immediate exceeds word size", statement->imm);
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                                         "Immediate exceeds word size", statement->imm);
                     }
                     instruction.immediate = (word)value;
                 }
@@ -207,7 +215,7 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
 
             if (!instruction_encode(encoded_instruction, sizeof encoded_instruction,
                                     &instruction)) {
-                ZLASM_CRASH("Assembler error: instruction encoding failed");
+                ZLASM_FAIL(ZLASM_DIAGNOSTIC_INTERNAL_ERROR, "Instruction encoding failed");
             }
             data = encoded_instruction;
             data_size = ZLVM_INSTRUCTION_SIZE;
@@ -215,17 +223,17 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
             data = current->value->raw->data;
             data_size = current->value->raw->size;
         } else {
-            ZLASM_CRASH("Assembler error: invalid line type");
+            ZLASM_FAIL(ZLASM_DIAGNOSTIC_INTERNAL_ERROR, "Invalid line type");
         }
 
         if (data_size > SIZE_MAX - offset) {
-            ZLASM_CRASH("Assembler output is too large");
+            ZLASM_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE, "Assembler output is too large");
         }
         size_t required_size = offset + data_size;
         if (required_size > capacity) {
             while (required_size > capacity) {
                 if (capacity > SIZE_MAX - growth_size) {
-                    ZLASM_CRASH("Assembler output is too large");
+                    ZLASM_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE, "Assembler output is too large");
                 }
                 capacity += growth_size;
             }
@@ -248,6 +256,95 @@ static const char *set_label_context(const char *context, const char *label) {
     char *result = asm_malloc(size);
     snprintf(result, size, "%s%s%s", context, ASM_CONTEXT_DELIMITER, label);
     return result;
+}
+
+static bool is_integer_token(const Token *token) {
+    return token->type == TOK_INT_BIN || token->type == TOK_INT_OCT || token->type == TOK_INT_DEC ||
+           token->type == TOK_INT_HEX;
+}
+
+static bool is_data_value_token(const Token *token, bool allow_string) {
+    return is_integer_token(token) || token->type == TOK_CHAR_LITERAL ||
+           (allow_string && token->type == TOK_STRING_LITERAL);
+}
+
+static void require_arity(const Directive *directive, size_t expected_count) {
+    if (directive->argc != expected_count) {
+        const Token *token =
+            directive->argc > expected_count ? directive->argv[expected_count] : directive->name;
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Invalid directive argument count",
+                         token);
+    }
+}
+
+static void validate_directive(const Directive *directive) {
+    switch (directive->type) {
+        case DIR_SECTION:
+        case DIR_GLOBAL:
+        case DIR_ENTRY:
+        case DIR_PROC:
+        case DIR_MACRO:
+            require_arity(directive, 1);
+            if (directive->argv[0]->type != TOK_ID) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Directive expects a symbol",
+                                 directive->argv[0]);
+            }
+            break;
+        case DIR_EXTERN:
+            if (directive->argc == 0) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, ".extern expects a symbol",
+                                 directive->name);
+            }
+            if (directive->argv[0]->type != TOK_ID) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                 ".extern first argument must be a symbol", directive->argv[0]);
+            }
+            break;
+        case DIR_ALIGN:
+        case DIR_LOCATE:
+        case DIR_SPACE:
+            require_arity(directive, 1);
+            if (!is_integer_token(directive->argv[0])) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Directive expects an integer",
+                                 directive->argv[0]);
+            }
+            break;
+        case DIR_ASCII:
+        case DIR_ASCIIZ:
+            if (directive->argc == 0) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                 "Data directive expects at least one value", directive->name);
+            }
+            for (size_t index = 0; index < directive->argc; index++) {
+                if (!is_data_value_token(directive->argv[index], true)) {
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                     "Invalid data directive value", directive->argv[index]);
+                }
+            }
+            break;
+        case DIR_BYTE:
+        case DIR_HWORD:
+        case DIR_WORD:
+        case DIR_DWORD:
+            if (directive->argc == 0) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                 "Data directive expects at least one value", directive->name);
+            }
+            for (size_t index = 0; index < directive->argc; index++) {
+                if (!is_data_value_token(directive->argv[index], false)) {
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                     "Invalid numeric directive value", directive->argv[index]);
+                }
+            }
+            break;
+        case DIR_ENDMACRO:
+        case DIR_ENDPROC:
+            require_arity(directive, 0);
+            break;
+        default:
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Invalid directive",
+                             directive->name);
+    }
 }
 
 static void validate_operands(Opcode opcode, Statement *statement) {
@@ -331,16 +428,17 @@ static void validate_operands(Opcode opcode, Statement *statement) {
             expected_immediate = -1;
             break;
         default:
-            ZLASM_TOKEN_CRASH("Unknown opcode", statement->opcode);
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_OPCODE, "Unknown opcode", statement->opcode);
     }
 
     if (registers != expected_registers ||
         (expected_immediate >= 0 && (statement->imm != NULL) != expected_immediate)) {
-        ZLASM_TOKEN_CRASH("Invalid operands", statement->opcode);
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_OPERANDS, "Invalid operands", statement->opcode);
     }
 }
 
-static Condition parse_condition(const char *string) {
+static Condition parse_condition(const Token *token) {
+    const char *string = token->value;
 
 #define CHECK(str, code)                                                                           \
     if (strcmp(string, str) == 0) {                                                                \
@@ -378,20 +476,33 @@ static Condition parse_condition(const char *string) {
     CHECK("lt", C_LESS);
     CHECK("le", C_LESS_OR_EQUALS);
 
-    ZLASM_CRASH("Unknown condition");
+    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_CONDITION, "Unknown condition", token);
 #undef CHECK
 }
 
-static Register parse_register(const char *string) {
+static Register parse_register(const Token *token) {
+    const char *string = token->value;
     if (string == NULL) {
         return R_ZERO;
     }
 
     if (string[0] == 'r') {
-        char *end = NULL;
-        unsigned long index = strtoul(string + 1, &end, 10);
-        if (*end != '\0' || index >= R_TOTAL) {
-            ZLASM_CRASH("Invalid numeric register");
+        if (string[1] == '\0') {
+            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_REGISTER, "Invalid numeric register", token);
+        }
+
+        size_t index = 0;
+        for (const char *character = string + 1; *character != '\0'; character++) {
+            if (*character < '0' || *character > '9') {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_REGISTER, "Invalid numeric register",
+                                 token);
+            }
+            size_t digit = (size_t)(*character - '0');
+            if (index > (R_TOTAL - 1) / 10 || index * 10 + digit >= R_TOTAL) {
+                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_REGISTER, "Invalid numeric register",
+                                 token);
+            }
+            index = index * 10 + digit;
         }
         return (Register)index;
     }
@@ -441,5 +552,5 @@ static Register parse_register(const char *string) {
     CHECK("pc", R_PC);
 
 #undef CHECK
-    ZLASM_CRASH("Unknown register");
+    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_REGISTER, "Unknown register", token);
 }

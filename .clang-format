@@ -17,5 +17,5 @@ PointerAlignment: Right
 DerivePointerAlignment: false
 SpaceBeforeParens: ControlStatements
 SortIncludes: CaseSensitive
-IncludeBlocks: Regroup
+IncludeBlocks: Preserve
 ...
