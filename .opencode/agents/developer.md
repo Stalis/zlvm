@@ -17,6 +17,8 @@ remaining blockers, and incomplete acceptance criteria honestly.
 After implementation and verification, inspect the status and diff, stage only the intended files,
 create a concise commit, and push the issue branch without waiting for a separate request. Skip the
 commit or push only when the user explicitly asks, the work is incomplete, verification fails, or a
-repository or authentication error blocks it. Never push directly to the default branch, force-push,
-amend an existing commit, bypass hooks or protections, or include unrelated changes. Report the
-commit SHA and remote branch, or the exact blocker that prevented either operation.
+non-temporary repository error blocks it. For temporary SSH-agent, credential-provider, or
+access-timeout failures, preserve the commit and destination and follow the retry and wait policy in
+`AGENTS.md`. Never push directly to the default branch, force-push, amend an existing commit, bypass
+hooks or protections, or include unrelated changes. Report the commit SHA and remote branch, or the
+exact blocker that prevented either operation.

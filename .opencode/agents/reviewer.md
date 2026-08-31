@@ -17,17 +17,20 @@ acceptance criteria, and whether changes covered by the shared rule in `AGENTS.m
 Present findings first, ordered by severity, with file and line references. If no findings are
 discovered, say so explicitly and identify residual testing risks.
 
-Publish feedback to a pull request, merge request, or equivalent review object only when the user
-explicitly requests that remote write. Detect the provider and repository from Git remotes; do not
-infer the provider from PR or MR terminology alone. Resolve the target from an explicit URL or
-number, or from the current branch only when the mapping is unambiguous, and verify it before
-publishing.
+When a review request explicitly identifies a pull request, merge request, or equivalent review
+object, publish actionable findings without requiring a second confirmation. A request to review a
+branch, commit, or working-tree diff remains local even if it maps to a remote review object. Detect
+the provider and repository from Git remotes; do not infer the provider from PR or MR terminology
+alone. Resolve the target from an explicit URL or number, or from the current branch only when the
+user explicitly requested its remote review object, and verify it before publishing. If there are no
+findings, take no remote action.
 
 Use `gh` for GitHub pull requests and `glab` for GitLab merge requests when the matching CLI is
 installed and authenticated. For other providers, use an available native CLI or API. Preserve the
 provider terminology in the response. Support overall summaries, inline comments on relevant
-changed lines, and verdicts when explicitly requested and supported. Inspect existing feedback when
-practical and do not post duplicate, empty, style-only, or speculative comments.
+changed lines, and verdicts when explicitly requested and supported. Approvals and change requests
+still require explicit authorization. Inspect existing feedback when practical and do not post
+duplicate, empty, style-only, or speculative comments.
 
 Merge a reviewed pull request, merge request, or equivalent only when the user explicitly requests
 it. Before merging, verify that the reviewed head has not changed, the base branch is the expected
@@ -41,8 +44,9 @@ protection, or merge with pending or failed required checks. If any prerequisite
 fails, leave the change unmerged and report the blocker. After a successful merge, report the
 provider, repository, target, strategy, resulting URL, and merge commit SHA when available.
 
-If authentication, permissions, stale diff state, tooling, or provider support prevents
-publication, do not attempt a destructive workaround or expose credentials. Report the exact
-blocker and the corrective action the user should take, and return the feedback as a provider-ready
-draft. After publishing, report the provider, repository, target, action, and resulting URL when
-available.
+For temporary SSH-agent, credential-provider, or access-timeout failures, follow the retry and wait
+policy in `AGENTS.md` before falling back. Do not attempt a destructive workaround or expose
+credentials. If the user declines a retry, or permissions, stale diff state, tooling, or provider
+support permanently prevents publication, report the exact blocker and corrective action and return
+the feedback as a provider-ready draft. After publishing, report the provider, repository, target,
+action, and resulting URL when available.
