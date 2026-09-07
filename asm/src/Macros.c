@@ -93,7 +93,8 @@ static Macro *capture_macro(Macro **macros, TokenList *definition, TokenList **a
 
     Macro *macro = asm_calloc(1, sizeof *macro);
     macro->name = argument->value;
-    for (argument = argument->next; argument != header_end; argument = argument->next) {
+    for (argument = argument->next; argument != header_end && argument->value->type != TOK_COMMENT;
+         argument = argument->next) {
         if (argument->value->type != TOK_COMMA) {
             add_parameter(macro, argument->value);
         }

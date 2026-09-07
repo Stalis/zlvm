@@ -78,6 +78,7 @@ int main(void) {
     zlasm_result_free(&result);
 
     expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nstop\n", "int 0xFF\n");
+    expect_macro_output(".macro stop ; comment\nint 0xFF\n.endmacro\nstop\n", "int 0xFF\n");
     expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nstop ; comment\n", "int 0xFF\n");
     expect_macro_output(".macro load register, value\nmovi register, value\n.endmacro\n"
                         "load $t0, 42\n",
