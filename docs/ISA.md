@@ -273,7 +273,7 @@ data directives apply their narrower range checks after parsing.
 | `.dword values...` | Emit 64-bit values | Implemented |
 | `.space size` | Reserve zero-initialized bytes | Implemented |
 | `.proc name` / `.endproc` | Scope local labels | Implemented |
-| `.macro name` / `.endmacro` | Define a macro | Markers are removed; macro expansion is not implemented |
+| `.macro name [parameters...]` / `.endmacro` | Define a macro | Implemented |
 
 Directive arguments are validated before processing. Symbol directives require a symbol, numeric
 directives require numeric values (or character literals for emitted integer data), and `.extern`
@@ -294,6 +294,30 @@ compatibility, including `.extern factorial, 0xFF`.
 emits `12 34 12 78 56 34 12 ef cd ab 89 67 45 23 01`. VM halfword, word, and
 doubleword memory reads and writes use the same little-endian order. Multi-byte values need not be
 aligned.
+
+### Macros
+
+Macros are collected after lexing and expanded before statement parsing, symbol resolution, and
+address calculation. A definition does not emit output. Parameters are substituted as complete
+tokens in the body, so their arguments can be registers, literals, labels, or other valid token
+kinds.
+
+```asm
+.macro load register, value
+    movi register, value
+.endmacro
+
+load $t0, 42
+load value=7, register=$t1
+```
+
+An identifier at the start of a line invokes a macro when its name matches a definition. Named
+arguments use `parameter=value`; positional arguments must appear before named arguments. Use
+`@name` for an explicit macro invocation when a missing definition should be reported as an
+undefined-macro diagnostic rather than the normal unknown-opcode diagnostic. Macro definitions may
+appear anywhere in a source file, but nested definitions are rejected. Recursive expansion and
+expansion deeper than 64 calls are rejected. Definition errors identify the definition token;
+argument, recursion, and errors from expanded body tokens identify the invocation token.
 
 ## Known Compatibility Constraints
 

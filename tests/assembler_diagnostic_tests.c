@@ -22,6 +22,24 @@ static void expect_failure(const char *source, ZlasmDiagnosticCode code, size_t 
     zlasm_result_free(&result);
 }
 
+static void expect_macro_failure(const char *source, ZlasmDiagnosticCode code) {
+    ZlasmResult result = zlasm_assemble(source, "macro.asm");
+    assert(result.binary == NULL);
+    assert(result.diagnostic.code == code);
+    assert(result.diagnostic.has_source_location);
+    zlasm_result_free(&result);
+}
+
+static void expect_macro_output(const char *source, const char *expected) {
+    ZlasmResult result = zlasm_assemble(source, "macro.asm");
+    ZlasmResult expected_result = zlasm_assemble(expected, "expected.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == expected_result.binary_size);
+    assert(memcmp(result.binary, expected_result.binary, result.binary_size) == 0);
+    zlasm_result_free(&expected_result);
+    zlasm_result_free(&result);
+}
+
 int main(void) {
     expect_failure(" \n    \"oops", ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL, 2, 5, 6, 5);
     expect_failure("movi $t0, 1 extra\n", ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN, 1, 13, 12, 5);
@@ -58,5 +76,21 @@ int main(void) {
     assert(result.binary != NULL);
     assert(result.binary_size == 8);
     zlasm_result_free(&result);
+
+    expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nstop\n", "int 0xFF\n");
+    expect_macro_output(".macro load register, value\nmovi register, value\n.endmacro\n"
+                        "load $t0, 42\n",
+                        "movi $t0, 42\n");
+    expect_macro_output(".macro load register, value\nmovi register, value\n.endmacro\n"
+                        "load value=42, register=$t0\n",
+                        "movi $t0, 42\n");
+    expect_macro_output(".macro spin\nloop:\ninc $t0\njmp #loop\n.endmacro\nspin\n",
+                        "loop:\ninc $t0\njmp #loop\n");
+    expect_macro_failure(".macro x\n.endmacro\n.macro x\n.endmacro\n",
+                         ZLASM_DIAGNOSTIC_MACRO_DUPLICATE_DEFINITION);
+    expect_macro_failure("@missing\n", ZLASM_DIAGNOSTIC_MACRO_UNDEFINED);
+    expect_macro_failure(".macro load register, value\nmovi register, value\n.endmacro\nload $t0\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro x\nx\n.endmacro\nx\n", ZLASM_DIAGNOSTIC_MACRO_RECURSION);
     return 0;
 }
