@@ -161,8 +161,7 @@ static size_t parameter_index(const Macro *macro, const char *name) {
     return macro->parameter_count;
 }
 
-static Token *named_argument_value(const Token *argument, const char *equals,
-                                   const Token *invocation) {
+static Token *named_argument_value(const char *equals, const Token *invocation) {
     LexerState lexer;
     lexer_init(&lexer, (char *)(equals + 1));
     lexer.source_pos = invocation->pos;
@@ -171,9 +170,9 @@ static Token *named_argument_value(const Token *argument, const char *equals,
     Token *value = lexer_readToken(&lexer);
     if (value == NULL || lexer_readToken(&lexer) != NULL) {
         ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT,
-                         "Macro named argument must contain one value", argument);
+                         "Macro named argument must contain one value", invocation);
     }
-    return clone_token(value, argument);
+    return clone_token(value, invocation);
 }
 
 static MacroArgument *read_arguments(const Macro *macro, TokenList *first, TokenList *end,
@@ -195,7 +194,7 @@ static MacroArgument *read_arguments(const Macro *macro, TokenList *first, Token
             size_t name_size = (size_t)(equals - argument->value);
             if (name_size == 0 || equals[1] == '\0') {
                 ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT,
-                                 "Malformed macro named argument", argument);
+                                 "Malformed macro named argument", invocation);
             }
             char *name = asm_malloc(name_size + 1);
             memcpy(name, argument->value, name_size);
@@ -203,15 +202,15 @@ static MacroArgument *read_arguments(const Macro *macro, TokenList *first, Token
             size_t index = parameter_index(macro, name);
             if (index == macro->parameter_count || arguments[index].is_set) {
                 ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT,
-                                 "Unknown or duplicate macro named argument", argument);
+                                 "Unknown or duplicate macro named argument", invocation);
             }
-            arguments[index].value = named_argument_value(argument, equals, invocation);
+            arguments[index].value = named_argument_value(equals, invocation);
             arguments[index].is_set = true;
             has_named_argument = true;
         } else {
             if (has_named_argument || positional_index == macro->parameter_count) {
                 ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT, "Invalid macro argument",
-                                 argument);
+                                 invocation);
             }
             arguments[positional_index].value = argument;
             arguments[positional_index].is_set = true;
@@ -260,9 +259,15 @@ static void expand_macro(Macro *macros, Macro *macro, TokenList *arguments,
         size_t index = (token->type == TOK_ID || token->type == TOK_LABEL_USE)
                            ? parameter_index(macro, token->value)
                            : macro->parameter_count;
-        append_token(
-            &body_first, &body_last,
-            clone_token(index == macro->parameter_count ? token : values[index].value, invocation));
+        if (token->type == TOK_LABEL_INIT) {
+            index = parameter_index(macro, token->value);
+        }
+        Token *expanded =
+            clone_token(index == macro->parameter_count ? token : values[index].value, invocation);
+        if (index != macro->parameter_count && token->type == TOK_LABEL_INIT) {
+            expanded->type = TOK_LABEL_INIT;
+        }
+        append_token(&body_first, &body_last, expanded);
     }
     stack[stack_count] = macro;
     expand_range(macros, body_first, NULL, stack, stack_count + 1, output_first, output_last,
@@ -305,6 +310,9 @@ static void expand_range(Macro *macros, TokenList *first, TokenList *end, Macro 
 }
 
 TokenList *macros_expand(TokenList *tokens) {
+    if (tokens == NULL || tokens->value == NULL) {
+        return NULL;
+    }
     Macro *macros = NULL;
     capture_macros(&macros, tokens);
 

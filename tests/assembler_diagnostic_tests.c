@@ -95,8 +95,21 @@ int main(void) {
                         "loop:\ninc $t0\njmp #loop\n");
     expect_macro_output(".macro go target\njmp #target\n.endmacro\ngo #done\ndone: int 0xFF\n",
                         "jmp #done\ndone: int 0xFF\n");
+    expect_macro_output(".macro make_label label\nlabel: int 0xFF\n.endmacro\nmake_label done\n"
+                        "jmp #done\n",
+                        "done: int 0xFF\njmp #done\n");
     expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nentry: stop\njmp #entry\n",
                         "entry: int 0xFF\njmp #entry\n");
+    expect_failure(".macro m value\nint value\n.endmacro\nm unknown=1\n",
+                   ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT, 4, 1, 35, 1);
+    result = zlasm_assemble("", "empty.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
+    result = zlasm_assemble("   \n\t", "empty.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
     result = zlasm_assemble(".macro x\n.endmacro", "macro.asm");
     assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
     assert(result.binary_size == 0);
