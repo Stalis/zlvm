@@ -22,6 +22,24 @@ static void expect_failure(const char *source, ZlasmDiagnosticCode code, size_t 
     zlasm_result_free(&result);
 }
 
+static void expect_macro_failure(const char *source, ZlasmDiagnosticCode code) {
+    ZlasmResult result = zlasm_assemble(source, "macro.asm");
+    assert(result.binary == NULL);
+    assert(result.diagnostic.code == code);
+    assert(result.diagnostic.has_source_location);
+    zlasm_result_free(&result);
+}
+
+static void expect_macro_output(const char *source, const char *expected) {
+    ZlasmResult result = zlasm_assemble(source, "macro.asm");
+    ZlasmResult expected_result = zlasm_assemble(expected, "expected.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == expected_result.binary_size);
+    assert(memcmp(result.binary, expected_result.binary, result.binary_size) == 0);
+    zlasm_result_free(&expected_result);
+    zlasm_result_free(&result);
+}
+
 int main(void) {
     expect_failure(" \n    \"oops", ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL, 2, 5, 6, 5);
     expect_failure("movi $t0, 1 extra\n", ZLASM_DIAGNOSTIC_UNEXPECTED_TOKEN, 1, 13, 12, 5);
@@ -58,5 +76,49 @@ int main(void) {
     assert(result.binary != NULL);
     assert(result.binary_size == 8);
     zlasm_result_free(&result);
+
+    expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nstop\n", "int 0xFF\n");
+    expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nstop ; comment\n", "int 0xFF\n");
+    expect_macro_output(".macro load register, value\nmovi register, value\n.endmacro\n"
+                        "load $t0, 42\n",
+                        "movi $t0, 42\n");
+    expect_macro_output(".macro load register, value\nmovi register, value\n.endmacro\n"
+                        "load value=42, register=$t0\n",
+                        "movi $t0, 42\n");
+    expect_macro_output(".macro emit text\n.ascii text\n.endmacro\nemit text=\"a b\"\n",
+                        ".ascii \"a b\"\n");
+    expect_failure(".macro emit text\n.ascii text\n.endmacro\nemit text=0xGG\n",
+                   ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, 4, 1, 39, 4);
+    expect_failure(".macro emit text\n.ascii text\n.endmacro\nemit text=999\n",
+                   ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE, 4, 1, 39, 4);
+    expect_macro_output(".macro spin\nloop:\ninc $t0\njmp #loop\n.endmacro\nspin\n",
+                        "loop:\ninc $t0\njmp #loop\n");
+    expect_macro_output(".macro go target\njmp #target\n.endmacro\ngo #done\ndone: int 0xFF\n",
+                        "jmp #done\ndone: int 0xFF\n");
+    expect_macro_output(".macro make_label label\nlabel: int 0xFF\n.endmacro\nmake_label done\n"
+                        "jmp #done\n",
+                        "done: int 0xFF\njmp #done\n");
+    expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nentry: stop\njmp #entry\n",
+                        "entry: int 0xFF\njmp #entry\n");
+    expect_failure(".macro m value\nint value\n.endmacro\nm unknown=1\n",
+                   ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT, 4, 1, 35, 1);
+    result = zlasm_assemble("", "empty.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
+    result = zlasm_assemble("   \n\t", "empty.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
+    result = zlasm_assemble(".macro x\n.endmacro", "macro.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
+    expect_macro_failure(".macro x\n.endmacro\n.macro x\n.endmacro\n",
+                         ZLASM_DIAGNOSTIC_MACRO_DUPLICATE_DEFINITION);
+    expect_macro_failure("@missing\n", ZLASM_DIAGNOSTIC_MACRO_UNDEFINED);
+    expect_macro_failure(".macro load register, value\nmovi register, value\n.endmacro\nload $t0\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro x\nx\n.endmacro\nx\n", ZLASM_DIAGNOSTIC_MACRO_RECURSION);
     return 0;
 }
