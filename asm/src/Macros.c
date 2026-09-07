@@ -148,7 +148,8 @@ static TokenList *skip_macro_definition(TokenList *definition) {
     while (current != NULL && !is_directive(current->value, "endmacro")) {
         current = current->next;
     }
-    return current == NULL ? NULL : line_end(current)->next;
+    TokenList *end_line = line_end(current);
+    return end_line == NULL ? NULL : end_line->next;
 }
 
 static size_t parameter_index(const Macro *macro, const char *name) {
@@ -289,7 +290,8 @@ static void expand_range(Macro *macros, TokenList *first, TokenList *end, Macro 
             }
         }
         append_token(output_first, output_last, clone_token(current->value, location));
-        is_line_start = current->value->type == TOK_NEWLINE;
+        is_line_start = current->value->type == TOK_NEWLINE ||
+                        (is_line_start && current->value->type == TOK_LABEL_INIT);
         current = current->next;
     }
 }

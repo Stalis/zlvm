@@ -86,6 +86,12 @@ int main(void) {
                         "movi $t0, 42\n");
     expect_macro_output(".macro spin\nloop:\ninc $t0\njmp #loop\n.endmacro\nspin\n",
                         "loop:\ninc $t0\njmp #loop\n");
+    expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nentry: stop\njmp #entry\n",
+                        "entry: int 0xFF\njmp #entry\n");
+    result = zlasm_assemble(".macro x\n.endmacro", "macro.asm");
+    assert(result.diagnostic.code == ZLASM_DIAGNOSTIC_NONE);
+    assert(result.binary_size == 0);
+    zlasm_result_free(&result);
     expect_macro_failure(".macro x\n.endmacro\n.macro x\n.endmacro\n",
                          ZLASM_DIAGNOSTIC_MACRO_DUPLICATE_DEFINITION);
     expect_macro_failure("@missing\n", ZLASM_DIAGNOSTIC_MACRO_UNDEFINED);
