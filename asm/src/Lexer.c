@@ -69,6 +69,9 @@ void lexer_init(LexerState *state, char *source) {
     state->pos = 0;
     state->line = 1;
     state->col = 1;
+    state->source_pos = 0;
+    state->source_line = 1;
+    state->source_col = 1;
 }
 
 char lexer_peekChar(LexerState *state) {
@@ -171,9 +174,9 @@ Token *lexer_readToken(LexerState *state) {
             first = state->source + state->pos;
             while (c != STRING_QUOTE) {
                 if (is_eof(c)) {
-                    Token token = {.pos = position,
-                                   .line = line,
-                                   .col = column,
+                    Token token = {.pos = state->source_pos + position,
+                                   .line = state->source_line + line - 1,
+                                   .col = line == 1 ? state->source_col + column - 1 : column,
                                    .source_size = state->pos - position};
                     ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
                                      "Unterminated string literal", &token);
@@ -190,9 +193,9 @@ Token *lexer_readToken(LexerState *state) {
             first = state->source + state->pos;
             while (c != CHAR_QUOTE) {
                 if (is_eof(c)) {
-                    Token token = {.pos = position,
-                                   .line = line,
-                                   .col = column,
+                    Token token = {.pos = state->source_pos + position,
+                                   .line = state->source_line + line - 1,
+                                   .col = line == 1 ? state->source_col + column - 1 : column,
                                    .source_size = state->pos - position};
                     ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
                                      "Unterminated character literal", &token);
@@ -244,9 +247,10 @@ Token *lexer_readToken(LexerState *state) {
                         c = lexer_nextChar(state);
                         while (c != quote) {
                             if (is_eof(c)) {
-                                Token token = {.pos = position,
-                                               .line = line,
-                                               .col = column,
+                                Token token = {.pos = state->source_pos + position,
+                                               .line = state->source_line + line - 1,
+                                               .col = line == 1 ? state->source_col + column - 1
+                                                                : column,
                                                .source_size = state->pos - position};
                                 ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
                                                  "Unterminated literal", &token);
@@ -277,9 +281,9 @@ Token *lexer_readToken(LexerState *state) {
     result->value = asm_calloc(value_size + 1, sizeof *result->value);
     memcpy(result->value, first, value_size);
 
-    result->pos = position;
-    result->line = line;
-    result->col = column;
+    result->pos = state->source_pos + position;
+    result->line = state->source_line + line - 1;
+    result->col = line == 1 ? state->source_col + column - 1 : column;
     result->source_size = state->pos - position;
 
     switch (result->type) {

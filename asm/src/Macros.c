@@ -161,9 +161,13 @@ static size_t parameter_index(const Macro *macro, const char *name) {
     return macro->parameter_count;
 }
 
-static Token *named_argument_value(const Token *argument, const char *equals) {
+static Token *named_argument_value(const Token *argument, const char *equals,
+                                   const Token *invocation) {
     LexerState lexer;
     lexer_init(&lexer, (char *)(equals + 1));
+    lexer.source_pos = invocation->pos;
+    lexer.source_line = invocation->line;
+    lexer.source_col = invocation->col;
     Token *value = lexer_readToken(&lexer);
     if (value == NULL || lexer_readToken(&lexer) != NULL) {
         ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT,
@@ -201,7 +205,7 @@ static MacroArgument *read_arguments(const Macro *macro, TokenList *first, Token
                 ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT,
                                  "Unknown or duplicate macro named argument", argument);
             }
-            arguments[index].value = named_argument_value(argument, equals);
+            arguments[index].value = named_argument_value(argument, equals, invocation);
             arguments[index].is_set = true;
             has_named_argument = true;
         } else {
@@ -253,8 +257,9 @@ static void expand_macro(Macro *macros, Macro *macro, TokenList *arguments,
     TokenList *body_last = NULL;
     for (TokenList *current = macro->body; current != macro->body_end; current = current->next) {
         Token *token = current->value;
-        size_t index =
-            token->type == TOK_ID ? parameter_index(macro, token->value) : macro->parameter_count;
+        size_t index = (token->type == TOK_ID || token->type == TOK_LABEL_USE)
+                           ? parameter_index(macro, token->value)
+                           : macro->parameter_count;
         append_token(
             &body_first, &body_last,
             clone_token(index == macro->parameter_count ? token : values[index].value, invocation));

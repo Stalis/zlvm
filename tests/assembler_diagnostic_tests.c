@@ -87,10 +87,14 @@ int main(void) {
                         "movi $t0, 42\n");
     expect_macro_output(".macro emit text\n.ascii text\n.endmacro\nemit text=\"a b\"\n",
                         ".ascii \"a b\"\n");
+    expect_failure(".macro emit text\n.ascii text\n.endmacro\nemit text=0xGG\n",
+                   ZLASM_DIAGNOSTIC_MALFORMED_NUMBER, 4, 1, 39, 4);
     expect_failure(".macro emit text\n.ascii text\n.endmacro\nemit text=999\n",
                    ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE, 4, 1, 39, 4);
     expect_macro_output(".macro spin\nloop:\ninc $t0\njmp #loop\n.endmacro\nspin\n",
                         "loop:\ninc $t0\njmp #loop\n");
+    expect_macro_output(".macro go target\njmp #target\n.endmacro\ngo #done\ndone: int 0xFF\n",
+                        "jmp #done\ndone: int 0xFF\n");
     expect_macro_output(".macro stop\nint 0xFF\n.endmacro\nentry: stop\njmp #entry\n",
                         "entry: int 0xFF\njmp #entry\n");
     result = zlasm_assemble(".macro x\n.endmacro", "macro.asm");
