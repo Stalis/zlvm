@@ -180,6 +180,9 @@ static MacroArgument *read_arguments(const Macro *macro, TokenList *first, Token
 
     for (TokenList *current = first; current != end; current = current->next) {
         Token *argument = current->value;
+        if (argument->type == TOK_COMMENT) {
+            break;
+        }
         if (argument->type == TOK_COMMA) {
             continue;
         }

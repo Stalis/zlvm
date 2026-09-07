@@ -239,6 +239,21 @@ Token *lexer_readToken(LexerState *state) {
                 }
             } else {
                 while (!is_ignored_char(c) && c != NEWLINE && c != COMMA) {
+                    if (c == STRING_QUOTE || c == CHAR_QUOTE) {
+                        char quote = c;
+                        c = lexer_nextChar(state);
+                        while (c != quote) {
+                            if (is_eof(c)) {
+                                Token token = {.pos = position,
+                                               .line = line,
+                                               .col = column,
+                                               .source_size = state->pos - position};
+                                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNTERMINATED_LITERAL,
+                                                 "Unterminated literal", &token);
+                            }
+                            c = lexer_nextChar(state);
+                        }
+                    }
                     c = lexer_nextChar(state);
                 }
                 if (*(CURRENT - 1) == LABEL_INIT_MARK) {
