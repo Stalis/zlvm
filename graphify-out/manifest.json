@@ -1,0 +1,362 @@
+{
+  "asm/main.c": {
+    "mtime": 1788802428.9899013,
+    "seen": 1788802768.576164,
+    "ast_hash": "ebdc3786a874adc61bb3466fc75d31ed",
+    "semantic_hash": "ebdc3786a874adc61bb3466fc75d31ed"
+  },
+  "asm/src/Assembler.c": {
+    "mtime": 1788802428.9906385,
+    "seen": 1788802768.576166,
+    "ast_hash": "bc0a400dcd7091f66707ca5e946916a2",
+    "semantic_hash": "bc0a400dcd7091f66707ca5e946916a2"
+  },
+  "asm/src/Directive.c": {
+    "mtime": 1788802428.9912765,
+    "seen": 1788802768.5761669,
+    "ast_hash": "d8225126b71b6409695101a32107a932",
+    "semantic_hash": "d8225126b71b6409695101a32107a932"
+  },
+  "asm/src/Error.c": {
+    "mtime": 1788802428.9916036,
+    "seen": 1788802768.5761678,
+    "ast_hash": "6dbd99f978407378ffbd00136fef41a5",
+    "semantic_hash": "6dbd99f978407378ffbd00136fef41a5"
+  },
+  "asm/src/Error.h": {
+    "mtime": 1788802428.9919667,
+    "seen": 1788802768.5761678,
+    "ast_hash": "ce0e67f24eea1dd1414bff758b3a3a27",
+    "semantic_hash": "ce0e67f24eea1dd1414bff758b3a3a27"
+  },
+  "asm/src/LabelTable.c": {
+    "mtime": 1787787907.7010112,
+    "seen": 1788802768.576169,
+    "ast_hash": "769190d541047f3155451544e3f2ccd3",
+    "semantic_hash": "769190d541047f3155451544e3f2ccd3"
+  },
+  "asm/src/Lexer.c": {
+    "mtime": 1788802428.9924357,
+    "seen": 1788802768.576169,
+    "ast_hash": "bc6d8ff564d84f5604e98fc7db7911d7",
+    "semantic_hash": "bc6d8ff564d84f5604e98fc7db7911d7"
+  },
+  "asm/src/LineList.c": {
+    "mtime": 1787787907.7018132,
+    "seen": 1788802768.57617,
+    "ast_hash": "3676402d38ae20b1e55d5fc7b98db0e8",
+    "semantic_hash": "3676402d38ae20b1e55d5fc7b98db0e8"
+  },
+  "asm/src/Memory.c": {
+    "mtime": 1788802428.992599,
+    "seen": 1788802768.57617,
+    "ast_hash": "a40f2a3690a7f6a5264fe8b46977c617",
+    "semantic_hash": "a40f2a3690a7f6a5264fe8b46977c617"
+  },
+  "asm/src/Memory.h": {
+    "mtime": 1788802428.9929783,
+    "seen": 1788802768.576171,
+    "ast_hash": "97a89e8d0c5e1230ffbcdee8b17bda30",
+    "semantic_hash": "97a89e8d0c5e1230ffbcdee8b17bda30"
+  },
+  "asm/src/Parser.c": {
+    "mtime": 1788802428.9932203,
+    "seen": 1788802768.576171,
+    "ast_hash": "fe1398627e4a950a07afe0c424fbf513",
+    "semantic_hash": "fe1398627e4a950a07afe0c424fbf513"
+  },
+  "asm/src/Statement.c": {
+    "mtime": 1787787907.7028198,
+    "seen": 1788802768.576172,
+    "ast_hash": "b529225d7060165feaa2ba46e4c67cae",
+    "semantic_hash": "b529225d7060165feaa2ba46e4c67cae"
+  },
+  "asm/src/Token.c": {
+    "mtime": 1788802428.9934716,
+    "seen": 1788802768.576172,
+    "ast_hash": "1fac7349edd600bc8627b774cfc17fcd",
+    "semantic_hash": "1fac7349edd600bc8627b774cfc17fcd"
+  },
+  "asm/src/zlasm.c": {
+    "mtime": 1788802428.99368,
+    "seen": 1788802768.576173,
+    "ast_hash": "45b31b38f3893f4ec37a6a59a554874c",
+    "semantic_hash": "45b31b38f3893f4ec37a6a59a554874c"
+  },
+  "emulator/main.c": {
+    "mtime": 1788802428.9942276,
+    "seen": 1788802768.576173,
+    "ast_hash": "52e747d3cee5cb4f594bb6711c13d7aa",
+    "semantic_hash": "52e747d3cee5cb4f594bb6711c13d7aa"
+  },
+  "emulator/src/ALU.c": {
+    "mtime": 1787787907.7050276,
+    "seen": 1788802768.576174,
+    "ast_hash": "96e6f0c4200b230ae4af2182349c05c9",
+    "semantic_hash": "96e6f0c4200b230ae4af2182349c05c9"
+  },
+  "emulator/src/Condition.c": {
+    "mtime": 1787787907.7052388,
+    "seen": 1788802768.576174,
+    "ast_hash": "1dc6ba3dcfcffd84ff9942c4bd8ad114",
+    "semantic_hash": "1dc6ba3dcfcffd84ff9942c4bd8ad114"
+  },
+  "emulator/src/Error.h": {
+    "mtime": 1787787907.7054303,
+    "seen": 1788802768.5761752,
+    "ast_hash": "528da7cb7e95bfdec454c781621afa46",
+    "semantic_hash": "528da7cb7e95bfdec454c781621afa46"
+  },
+  "emulator/src/Instruction.c": {
+    "mtime": 1787853715.4485888,
+    "seen": 1788802768.5761752,
+    "ast_hash": "3e3815ebab8b0732c4966ea40addc64d",
+    "semantic_hash": "3e3815ebab8b0732c4966ea40addc64d"
+  },
+  "emulator/src/Memory.h": {
+    "mtime": 1787787907.7058852,
+    "seen": 1788802768.5761762,
+    "ast_hash": "2f07936535316b8ac881227963ae85db",
+    "semantic_hash": "2f07936535316b8ac881227963ae85db"
+  },
+  "emulator/src/Opcode.c": {
+    "mtime": 1787787907.7060823,
+    "seen": 1788802768.5761762,
+    "ast_hash": "f055692f5a1432ad7f3169f478573c54",
+    "semantic_hash": "f055692f5a1432ad7f3169f478573c54"
+  },
+  "emulator/src/VirtualMachineInternal.c": {
+    "mtime": 1787853715.4489665,
+    "seen": 1788802768.576177,
+    "ast_hash": "be57bd4e1a70740d50b1703a18454d31",
+    "semantic_hash": "be57bd4e1a70740d50b1703a18454d31"
+  },
+  "emulator/src/VirtualMachineInternal.h": {
+    "mtime": 1787787907.7067673,
+    "seen": 1788802768.576177,
+    "ast_hash": "ccc109e9dda8efd26813507d03aab598",
+    "semantic_hash": "ccc109e9dda8efd26813507d03aab598"
+  },
+  "include/ALU.h": {
+    "mtime": 1787787907.707131,
+    "seen": 1788802768.5761778,
+    "ast_hash": "16a5bcf3b5ca96b9efffc6fb2ba4e1bf",
+    "semantic_hash": "16a5bcf3b5ca96b9efffc6fb2ba4e1bf"
+  },
+  "include/CPSR.h": {
+    "mtime": 1787787907.7074184,
+    "seen": 1788802768.5761778,
+    "ast_hash": "70a48a03dc72cd8f4c279c8515693172",
+    "semantic_hash": "70a48a03dc72cd8f4c279c8515693172"
+  },
+  "include/Condition.h": {
+    "mtime": 1787787907.7079616,
+    "seen": 1788802768.576179,
+    "ast_hash": "ac980a6a6cd3cbabc0a52203a3c65334",
+    "semantic_hash": "ac980a6a6cd3cbabc0a52203a3c65334"
+  },
+  "include/Instruction.h": {
+    "mtime": 1787853715.4492507,
+    "seen": 1788802768.576179,
+    "ast_hash": "af16627d68a159904007df6144b55927",
+    "semantic_hash": "af16627d68a159904007df6144b55927"
+  },
+  "include/Opcode.h": {
+    "mtime": 1787787907.7084653,
+    "seen": 1788802768.57618,
+    "ast_hash": "c7d5ab64e648f66e7d7a00a040014f85",
+    "semantic_hash": "c7d5ab64e648f66e7d7a00a040014f85"
+  },
+  "include/Registers.h": {
+    "mtime": 1787787907.7086518,
+    "seen": 1788802768.57618,
+    "ast_hash": "063d27438c08c4935f6e6a2fb264ba7e",
+    "semantic_hash": "063d27438c08c4935f6e6a2fb264ba7e"
+  },
+  "include/State.h": {
+    "mtime": 1787787907.7088993,
+    "seen": 1788802768.576181,
+    "ast_hash": "7b60f581d71368548965a5553d17fe4d",
+    "semantic_hash": "7b60f581d71368548965a5553d17fe4d"
+  },
+  "include/Types.h": {
+    "mtime": 1787787907.7092073,
+    "seen": 1788802768.576181,
+    "ast_hash": "c8d3e0e1b66bb0d3c41e4337f8457881",
+    "semantic_hash": "c8d3e0e1b66bb0d3c41e4337f8457881"
+  },
+  "include/Value.h": {
+    "mtime": 1787787907.7093952,
+    "seen": 1788802768.5761821,
+    "ast_hash": "005e7d035e37eaa781ae7ad828be8299",
+    "semantic_hash": "005e7d035e37eaa781ae7ad828be8299"
+  },
+  "include/VirtualMachine.h": {
+    "mtime": 1787787907.7096515,
+    "seen": 1788802768.5761821,
+    "ast_hash": "58137abe98d8038d37a177bea5914b98",
+    "semantic_hash": "58137abe98d8038d37a177bea5914b98"
+  },
+  "include/asm/Assembler.h": {
+    "mtime": 1787787907.7098694,
+    "seen": 1788802768.576183,
+    "ast_hash": "85a129012757179dbbd9db9f7cddab16",
+    "semantic_hash": "85a129012757179dbbd9db9f7cddab16"
+  },
+  "include/asm/Directive.h": {
+    "mtime": 1788802428.9945219,
+    "seen": 1788802768.576183,
+    "ast_hash": "847d7e2f742a250e0429caebc8e2a0b3",
+    "semantic_hash": "847d7e2f742a250e0429caebc8e2a0b3"
+  },
+  "include/asm/LabelTable.h": {
+    "mtime": 1787787907.7102573,
+    "seen": 1788802768.576183,
+    "ast_hash": "279c1b4785abaffc8888e4b1091cbf90",
+    "semantic_hash": "279c1b4785abaffc8888e4b1091cbf90"
+  },
+  "include/asm/Lexer.h": {
+    "mtime": 1787787907.7104714,
+    "seen": 1788802768.576184,
+    "ast_hash": "6722a6a372d5bb78166e2eb13884056d",
+    "semantic_hash": "6722a6a372d5bb78166e2eb13884056d"
+  },
+  "include/asm/Line.h": {
+    "mtime": 1787787907.710884,
+    "seen": 1788802768.576184,
+    "ast_hash": "60b28ac6eac21c99b9553e144434e446",
+    "semantic_hash": "60b28ac6eac21c99b9553e144434e446"
+  },
+  "include/asm/LineList.h": {
+    "mtime": 1787787907.7112646,
+    "seen": 1788802768.576185,
+    "ast_hash": "6efd54628d723031293e26e2138214a4",
+    "semantic_hash": "6efd54628d723031293e26e2138214a4"
+  },
+  "include/asm/LinkedList.h": {
+    "mtime": 1787787907.7116938,
+    "seen": 1788802768.576185,
+    "ast_hash": "cfafc34638bbf1bf61346011ef0867ab",
+    "semantic_hash": "cfafc34638bbf1bf61346011ef0867ab"
+  },
+  "include/asm/Macros.h": {
+    "mtime": 1787787907.7119405,
+    "seen": 1788802768.5761862,
+    "ast_hash": "240c4134a9b7d9a9fdf873a5f6b6e416",
+    "semantic_hash": "240c4134a9b7d9a9fdf873a5f6b6e416"
+  },
+  "include/asm/Parser.h": {
+    "mtime": 1787787907.7121928,
+    "seen": 1788802768.5761862,
+    "ast_hash": "0ab29cc8682da8d655dd1ae43c37f889",
+    "semantic_hash": "0ab29cc8682da8d655dd1ae43c37f889"
+  },
+  "include/asm/Statement.h": {
+    "mtime": 1787787907.7124364,
+    "seen": 1788802768.576187,
+    "ast_hash": "df8a8363cc6968583b8763eebe0b9cd1",
+    "semantic_hash": "df8a8363cc6968583b8763eebe0b9cd1"
+  },
+  "include/asm/Token.h": {
+    "mtime": 1788802428.9948392,
+    "seen": 1788802768.5761878,
+    "ast_hash": "334689757b616de69242c32b970402f8",
+    "semantic_hash": "334689757b616de69242c32b970402f8"
+  },
+  "include/asm/zlasm.h": {
+    "mtime": 1788802428.9950483,
+    "seen": 1788802768.5761878,
+    "ast_hash": "1d05b5b5db91b45f390eb7a07003a7bd",
+    "semantic_hash": "1d05b5b5db91b45f390eb7a07003a7bd"
+  },
+  "include/zlvm.h": {
+    "mtime": 1786876918.5771627,
+    "seen": 1788802768.5761878,
+    "ast_hash": "8fcea10f7cd449261f3617aca18e5889",
+    "semantic_hash": "8fcea10f7cd449261f3617aca18e5889"
+  },
+  "tests/assembler_diagnostic_tests.c": {
+    "mtime": 1788802428.995554,
+    "seen": 1788802768.576189,
+    "ast_hash": "3e75402f3b8409430047547733c54a56",
+    "semantic_hash": "3e75402f3b8409430047547733c54a56"
+  },
+  "tests/execution_equivalence_tests.c": {
+    "mtime": 1787918997.535447,
+    "seen": 1788802768.576189,
+    "ast_hash": "e617500587be6f3fdfee9d70c58a3750",
+    "semantic_hash": "e617500587be6f3fdfee9d70c58a3750"
+  },
+  "tests/instruction_tests.c": {
+    "mtime": 1788802428.9960418,
+    "seen": 1788802768.57619,
+    "ast_hash": "5d4b5c25620376a6b4c6a489bad8317e",
+    "semantic_hash": "5d4b5c25620376a6b4c6a489bad8317e"
+  },
+  ".github/workflows/cmake-single-platform.yml": {
+    "mtime": 1787787964.761576,
+    "seen": 1788802768.57619,
+    "ast_hash": "0cbb9684e62639490c8d6301ee2d8601",
+    "semantic_hash": "0cbb9684e62639490c8d6301ee2d8601"
+  },
+  ".opencode/agents/developer.md": {
+    "mtime": 1788802428.988471,
+    "seen": 1788802768.576191,
+    "ast_hash": "38f81808ea5e5e18ea6e37b0247ea5db",
+    "semantic_hash": "38f81808ea5e5e18ea6e37b0247ea5db"
+  },
+  ".opencode/agents/reviewer.md": {
+    "mtime": 1788802428.9888155,
+    "seen": 1788802768.576191,
+    "ast_hash": "08896db6848c840a31a7bc6c6afb4099",
+    "semantic_hash": "08896db6848c840a31a7bc6c6afb4099"
+  },
+  "AGENTS.md": {
+    "mtime": 1788802428.9892657,
+    "seen": 1788802768.576192,
+    "ast_hash": "fd6da8ac39da144cf04f7fe6a29405fa",
+    "semantic_hash": "fd6da8ac39da144cf04f7fe6a29405fa"
+  },
+  "CMakeLists.txt": {
+    "mtime": 1787787907.6979706,
+    "seen": 1788802768.576192,
+    "ast_hash": "1a5825c6e645ab615919ef6fa52e6b59",
+    "semantic_hash": "1a5825c6e645ab615919ef6fa52e6b59"
+  },
+  "README.md": {
+    "mtime": 1787918997.5345042,
+    "seen": 1788802768.576193,
+    "ast_hash": "208dd64e9a066f70def9a4a3a66ba9cb",
+    "semantic_hash": "208dd64e9a066f70def9a4a3a66ba9cb"
+  },
+  "asm/CMakeLists.txt": {
+    "mtime": 1787787907.6989625,
+    "seen": 1788802768.576193,
+    "ast_hash": "c93166dce03ff1a4e7043cba50917297",
+    "semantic_hash": "c93166dce03ff1a4e7043cba50917297"
+  },
+  "docs/CODING_CONVENTIONS.md": {
+    "mtime": 1787787907.7036655,
+    "seen": 1788802768.576194,
+    "ast_hash": "7a986a9b00d571e8b2ad6620c1b1008c",
+    "semantic_hash": "7a986a9b00d571e8b2ad6620c1b1008c"
+  },
+  "docs/ISA.md": {
+    "mtime": 1788802428.9940302,
+    "seen": 1788802768.576194,
+    "ast_hash": "cc5296620ad772e5f5224c849f240290",
+    "semantic_hash": "cc5296620ad772e5f5224c849f240290"
+  },
+  "emulator/CMakeLists.txt": {
+    "mtime": 1787787907.70432,
+    "seen": 1788802768.576195,
+    "ast_hash": "cfb67417e0ec11222667d52dd36f103b",
+    "semantic_hash": "cfb67417e0ec11222667d52dd36f103b"
+  },
+  "tests/CMakeLists.txt": {
+    "mtime": 1788802428.995369,
+    "seen": 1788802768.576195,
+    "ast_hash": "7b79204f7cb0b46ffc3d8545465524f7",
+    "semantic_hash": "7b79204f7cb0b46ffc3d8545465524f7"
+  }
+}
