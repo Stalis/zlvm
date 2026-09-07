@@ -1,0 +1,56 @@
+{
+  "enum_id": "include_opcode_h_opcode",
+  "enum_label": "Opcode",
+  "enum_file": "include/Opcode.h",
+  "macro": "FOREACH_OPCODE",
+  "documentation": {
+    "id": "docs_isa_instruction_set",
+    "file": "docs/ISA.md"
+  },
+  "handlers": [
+    {
+      "id": "asm_src_assembler_validate_operands",
+      "file": "asm/src/Assembler.c",
+      "function": "validate_operands()",
+      "context": "operand validation"
+    },
+    {
+      "id": "emulator_src_virtualmachineinternal_vm_do_operation",
+      "file": "emulator/src/VirtualMachineInternal.c",
+      "function": "vm_do_operation()",
+      "context": "VM dispatch"
+    }
+  ],
+  "pipeline": [
+    {
+      "id": "emulator_src_opcode_string_to_opcode",
+      "file": "emulator/src/Opcode.c",
+      "line": 31,
+      "context": "mnemonic lookup"
+    },
+    {
+      "id": "asm_src_assembler_asm_translate",
+      "file": "asm/src/Assembler.c",
+      "line": 178,
+      "context": "assembly translation"
+    },
+    {
+      "id": "emulator_src_instruction_instruction_encode",
+      "file": "emulator/src/Instruction.c",
+      "line": 12,
+      "context": "binary encoding"
+    },
+    {
+      "id": "emulator_src_instruction_instruction_decode",
+      "file": "emulator/src/Instruction.c",
+      "line": 29,
+      "context": "binary decoding"
+    },
+    {
+      "id": "emulator_src_opcode_opcode_to_string",
+      "file": "emulator/src/Opcode.c",
+      "line": 18,
+      "context": "mnemonic rendering"
+    }
+  ]
+}
