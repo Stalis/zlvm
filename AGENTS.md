@@ -7,6 +7,10 @@
   unrelated legacy code.
 - Update `docs/ISA.md` in the same change when modifying opcodes, registers, conditions,
   interrupts, directives, memory layout, or instruction encoding.
+- Treat SSH-agent, credential-provider, and access-timeout failures from Git-provider commands as
+  temporary. Show the sanitized error, ask the user to restore access and confirm a retry, wait, and
+  rerun the exact command. Escalate again if it repeats; stop only when the user declines or the
+  failure is not temporary.
 
 ## Build and Test
 
