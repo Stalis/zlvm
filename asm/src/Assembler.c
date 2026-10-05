@@ -90,7 +90,7 @@ void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
                     procedure_context = NULL;
                     break;
                 case DIR_MACRO:
-                    // TODO(assembler): implement macros.
+                    // Macro definitions are removed before parsing.
                     break;
                 case DIR_ENDMACRO:
                     break;

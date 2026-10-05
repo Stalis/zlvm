@@ -316,8 +316,11 @@ arguments use `parameter=value`; positional arguments must appear before named a
 `@name` for an explicit macro invocation when a missing definition should be reported as an
 undefined-macro diagnostic rather than the normal unknown-opcode diagnostic. Macro definitions may
 appear anywhere in a source file, but nested definitions are rejected. Recursive expansion and
-expansion deeper than 64 calls are rejected. Definition errors identify the definition token;
-argument, recursion, and errors from expanded body tokens identify the invocation token.
+expansion deeper than 64 calls are rejected. Every declared parameter must receive exactly one
+argument; duplicate, unknown, malformed, or positional-after-named arguments are rejected. A
+duplicate definition, missing definition name, invalid parameter, unterminated definition, stray
+`.endmacro`, or `.endmacro` argument is also rejected. Definition errors identify the definition
+token; argument, recursion, and errors from expanded body tokens identify the invocation token.
 
 ## Known Compatibility Constraints
 

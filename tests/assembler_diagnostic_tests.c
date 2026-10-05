@@ -120,6 +120,24 @@ int main(void) {
     expect_macro_failure("@missing\n", ZLASM_DIAGNOSTIC_MACRO_UNDEFINED);
     expect_macro_failure(".macro load register, value\nmovi register, value\n.endmacro\nload $t0\n",
                          ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro\n.endmacro\n", ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m 1\n.endmacro\n", ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m value, value\n.endmacro\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro outer\n.macro inner\n.endmacro\n.endmacro\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m\nint 0xFF\n", ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".endmacro\n", ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m\n.endmacro extra\n", ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m value\nint value\n.endmacro\nm value=1, value=2\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m first, second\nint first\n.endmacro\nm first=1, 2\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(".macro m value\nint value\n.endmacro\nm value=\n",
+                         ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT);
+    expect_macro_failure(
+        ".macro first\nsecond\n.endmacro\n.macro second\nfirst\n.endmacro\nfirst\n",
+        ZLASM_DIAGNOSTIC_MACRO_RECURSION);
     expect_macro_failure(".macro x\nx\n.endmacro\nx\n", ZLASM_DIAGNOSTIC_MACRO_RECURSION);
     return 0;
 }
