@@ -7,11 +7,12 @@
 #include <setjmp.h>
 #include <stdlib.h>
 
+#include "Assembler.h"
 #include "Error.h"
+#include "Lexer.h"
+#include "Macros.h"
 #include "Memory.h"
-#include <Assembler.h>
-#include <Lexer.h>
-#include <Parser.h>
+#include "Parser.h"
 
 ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
     ZlasmResult result = {0};
@@ -56,7 +57,7 @@ ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
 
     ParserContext *parser = asm_malloc(sizeof(ParserContext));
     parser_init(parser);
-    parser_parse(parser, tokenStream_new(lexer->_tokens));
+    parser_parse(parser, tokenStream_new(macros_expand(lexer->_tokens)));
     asm_free(lexer);
 
     AssemblerContext *assembler = asm_malloc(sizeof(AssemblerContext));
