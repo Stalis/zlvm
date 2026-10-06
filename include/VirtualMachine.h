@@ -8,6 +8,7 @@
 #include "ALU.h"
 #include "CPSR.h"
 #include "Condition.h"
+#include "Image.h"
 #include "Instruction.h"
 #include "Registers.h"
 #include "Types.h"
@@ -27,6 +28,7 @@ typedef struct VirtualMachine {
     byte _rom[ZLVM_ROM_SIZE];
     byte *_memory;
     size_t _memorySize;
+    word _entryPoint;
 } VirtualMachine;
 
 /**
@@ -45,6 +47,9 @@ void vm_destroy(VirtualMachine *vm);
  * @param size size of dump
  */
 void vm_loadDump(VirtualMachine *vm, const byte *program, size_t size);
+
+/** Load a versioned executable image and select its validated entry point. */
+bool vm_loadImage(VirtualMachine *vm, const byte *image, size_t image_size, ZlImageError *error);
 
 /**
  * @brief Start vm

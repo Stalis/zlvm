@@ -22,8 +22,8 @@ decrements `sp` by four and then reads a word.
 
 ## Instruction Encoding
 
-ROM images are raw byte sequences without a header. Each instruction occupies exactly eight bytes
-with this layout:
+Raw compatibility ROM images are byte sequences without a header. Each instruction occupies exactly
+eight bytes with this layout:
 
 | Byte offset | Size | Field |
 | ---: | ---: | --- |
@@ -322,10 +322,50 @@ duplicate definition, missing definition name, invalid parameter, unterminated d
 `.endmacro`, or `.endmacro` argument is also rejected. Definition errors identify the definition
 token; argument, recursion, and errors from expanded body tokens identify the invocation token.
 
-## Known Compatibility Constraints
+## Object and executable images
 
-- ROM images contain no magic value, format version, sections, entry-point metadata, or relocation
-  records. Execution starts at byte address zero.
+Versioned images use the ASCII magic `ZLIM`, version `1`, and little-endian fixed-width fields. The
+header is 52 bytes:
+
+| Offset | Size | Field |
+| ---: | ---: | --- |
+| 0 | 4 | Magic `ZLIM` |
+| 4 | 2 | Version, currently `1` |
+| 6 | 1 | Kind: `1` object, `2` executable |
+| 7 | 1 | Reserved, zero |
+| 8 | 4 | Header size, `52` |
+| 12 | 4 | Section count |
+| 16 | 4 | Symbol count |
+| 20 | 4 | Relocation count |
+| 24 | 4 | Executable entry byte address, otherwise zero |
+| 28 | 4 | Section table offset |
+| 32 | 4 | Symbol table offset |
+| 36 | 4 | Relocation table offset |
+| 40 | 4 | String table offset |
+| 44 | 4 | String table size |
+| 48 | 4 | Section payload offset |
+
+All offsets and sizes are unsigned 32-bit values. Tables contain fixed-width records and are followed
+by a NUL-prefixed string table. Section records contain string offset, type, flags, power-of-two
+alignment, load address, payload offset, and payload size (seven 32-bit fields). For BSS, payload
+size is the zero-filled memory size and no bytes are stored at the payload offset. Section types are
+`1` text, `2` data, and `3` BSS. Symbol records contain name offset, section index, value, size,
+binding, type, and two reserved bytes. `0xffffffff` is the undefined section index. Relocation
+records contain section index, byte offset, relocation type, symbol index, and signed 32-bit addend.
+Relocation types `1` and `2` are absolute 32-bit and PC-relative 32-bit respectively.
+
+An object may contain local, global, weak, and undefined symbols and relocations. An executable must
+have a nonzero entry address inside a text section and must not contain relocation records; relocation
+application is not implemented yet. The loader copies text and data sections into ROM;
+BSS has no file payload. Section and table ranges must be within the file, names must terminate inside
+the string table, indexes must be valid, alignments must be nonzero powers of two, and arithmetic
+overflow is rejected. Bad magic, unsupported versions, unknown kinds, malformed records, bounds
+errors, and executable entry points outside text are rejected without partial loading.
+
+The existing raw `.bin` output remains an explicit compatibility mode: `zlasm -o file.bin` emits the
+raw bytes described above and `zlvm --binary file.bin` loads them with entry address zero. Versioned
+images are available through the `ZlImage` codec and `vm_loadImage`; raw files are never guessed to be
+versioned. This avoids silently changing existing `.bin` consumers while the linker is implemented.
 
 ## Assembler diagnostics
 
