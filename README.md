@@ -1,5 +1,7 @@
 # ZL Virtual Machine
 
+[![CMake CI](https://github.com/Stalis/zlvm/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/Stalis/zlvm/actions/workflows/cmake-single-platform.yml)
+
 ZLVM is a C11 assembler and virtual machine for a custom 32-bit CPU architecture. It includes a standalone assembler (`zlasm`), an emulator (`zlvm`), a documented instruction set, and automated integration and sanitizer tests.
 
 Assembly programs can be executed directly from source or compiled into a fixed-width, little-endian ROM image and loaded separately by the emulator.
