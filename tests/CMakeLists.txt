@@ -8,6 +8,17 @@ add_test(
 set_tests_properties(zlasm.test-asm-fixture PROPERTIES FIXTURES_SETUP zlvm-test-asm-binary)
 
 add_test(
+    NAME zlvm.macro-execution
+    COMMAND
+        ${CMAKE_COMMAND}
+        -DZLVM_EXECUTABLE=$<TARGET_FILE:zlvm-bin>
+        -DZLASM_EXECUTABLE=$<TARGET_FILE:zlasm-bin>
+        -DZLVM_MACRO_TEST_PROGRAM=${CMAKE_CURRENT_LIST_DIR}/macro_execution.asm
+        -DZLVM_MACRO_TEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/macro-fixtures
+        -P ${CMAKE_CURRENT_LIST_DIR}/run_macro_execution.cmake
+)
+
+add_test(
     NAME zlvm.test-asm
     COMMAND
         ${CMAKE_COMMAND}

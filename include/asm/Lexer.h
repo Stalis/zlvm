@@ -28,6 +28,9 @@ typedef struct LexerState {
     size_t pos;
     size_t line;
     size_t col;
+    size_t source_pos;
+    size_t source_line;
+    size_t source_col;
 } LexerState;
 
 void lexer_init(LexerState *, char *source);
