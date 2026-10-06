@@ -105,8 +105,8 @@ case-insensitive because the assembler normalizes them before translation. See t
 
 ## Current Limitations
 
-- Binary images have no header, format version, sections, entry-point metadata, or relocation
-  records.
+- Raw `.bin` files remain the compatibility output; versioned object/executable images are exposed
+  through the `ZlImage` codec and VM image loader.
 - Sections, alignment, explicit placement, entry selection, macros, external symbols, and linking
   are incomplete or metadata-only.
 
@@ -149,9 +149,10 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
 
 ### Milestone 3: Assembler and ISA completion
 
-- [ ] Implement text/data sections, alignment, explicit locations, and entry-point selection.
-- [ ] Define object-file and linker behavior for `.global` and `.extern`. The unused `factorial`
-  declaration in `test.asm` does not block Milestones 1 or 2.
+- [ ] Make the assembler emit versioned text/data sections, alignment, explicit locations, and
+  entry-point selection.
+- [x] Define the versioned object-file contract for `.global` and `.extern`; linker resolution is
+  still pending. The unused `factorial` declaration in `test.asm` does not block earlier milestones.
 - [ ] Implement macros, syscall behavior, and structured diagnostics for invalid input.
 - [ ] Keep the ISA reference and integration tests synchronized with every completed feature.
 

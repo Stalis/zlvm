@@ -40,6 +40,7 @@ void vm_initialize(VirtualMachine *vm, size_t ram_size) {
     }
 
     vm->_memorySize = ram_size;
+    vm->_entryPoint = 0;
     vm->_memory = vm_calloc(ram_size, sizeof *vm->_memory);
 
     vm->_cpsr.value_.word_ = 0;
@@ -64,10 +65,56 @@ void vm_loadDump(VirtualMachine *vm, const byte *program, size_t size) {
     for (size_t i = 0; i < size; i++) {
         vm->_rom[i] = program[i];
     }
+    vm->_entryPoint = 0;
+}
+
+bool vm_loadImage(VirtualMachine *vm, const byte *image, size_t image_size, ZlImageError *error) {
+    if (vm == NULL || image == NULL) {
+        if (error != NULL) {
+            *error = ZL_IMAGE_ERROR_INVALID_ARGUMENT;
+        }
+        return false;
+    }
+    ZlImage decoded = {0};
+    bool decoded_ok = zl_image_decode(image, image_size, &decoded, error);
+    if (!decoded_ok || decoded.kind != ZL_IMAGE_EXECUTABLE) {
+        zl_image_free(&decoded);
+        if (error != NULL && decoded_ok) {
+            *error = ZL_IMAGE_ERROR_INVALID_KIND;
+        }
+        return false;
+    }
+    for (size_t index = 0; index < decoded.section_count; index++) {
+        const ZlImageSection *section = &decoded.sections[index];
+        if (section->type != ZL_IMAGE_SECTION_TEXT && section->type != ZL_IMAGE_SECTION_DATA) {
+            continue;
+        }
+        if (section->address > ZLVM_ROM_SIZE ||
+            section->data_size > ZLVM_ROM_SIZE - section->address) {
+            zl_image_free(&decoded);
+            if (error != NULL) {
+                *error = ZL_IMAGE_ERROR_BOUNDS;
+            }
+            return false;
+        }
+    }
+    for (size_t index = 0; index < decoded.section_count; index++) {
+        const ZlImageSection *section = &decoded.sections[index];
+        if (section->type != ZL_IMAGE_SECTION_TEXT && section->type != ZL_IMAGE_SECTION_DATA) {
+            continue;
+        }
+        memcpy(vm->_rom + section->address, section->data, section->data_size);
+    }
+    vm->_entryPoint = decoded.entry_point;
+    zl_image_free(&decoded);
+    if (error != NULL) {
+        *error = ZL_IMAGE_ERROR_NONE;
+    }
+    return true;
 }
 
 State vm_run(VirtualMachine *vm) {
-    vm->_registers[R_PC].word_ = 0; // set to start of rom
+    vm->_registers[R_PC].word_ = vm->_entryPoint;
     vm->_registers[R_BP].word_ = ZLVM_ROM_SIZE;
     vm->_registers[R_SP].word_ = vm->_registers[R_BP].word_; // set to start of memory
     while (vm_has_no_error(vm) && !vm_has_state(vm, S_HALTED)) {
