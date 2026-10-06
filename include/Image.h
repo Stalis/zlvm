@@ -85,8 +85,20 @@ typedef struct ZlImage {
     size_t relocation_count;
 } ZlImage;
 
+/**
+ * Encode an image into a newly allocated buffer. The caller owns the returned buffer and must free
+ * it. Input names and section data remain borrowed and must stay valid for the duration of the
+ * call.
+ */
 bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size, ZlImageError *error);
+
+/**
+ * Decode an image into newly allocated arrays, names, and section data. The caller owns those
+ * allocations and must release them with zl_image_free().
+ */
 bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlImageError *error);
+
+/** Release allocations owned by a decoded image and reset it to zero. */
 void zl_image_free(ZlImage *image);
 
 #endif // ZLVM_IMAGE_H

@@ -86,7 +86,8 @@ bool vm_loadImage(VirtualMachine *vm, const byte *image, size_t image_size, ZlIm
     }
     for (size_t index = 0; index < decoded.section_count; index++) {
         const ZlImageSection *section = &decoded.sections[index];
-        if (section->type != ZL_IMAGE_SECTION_TEXT && section->type != ZL_IMAGE_SECTION_DATA) {
+        if (section->type != ZL_IMAGE_SECTION_TEXT && section->type != ZL_IMAGE_SECTION_DATA &&
+            section->type != ZL_IMAGE_SECTION_BSS) {
             continue;
         }
         if (section->address > ZLVM_ROM_SIZE ||
@@ -100,10 +101,14 @@ bool vm_loadImage(VirtualMachine *vm, const byte *image, size_t image_size, ZlIm
     }
     for (size_t index = 0; index < decoded.section_count; index++) {
         const ZlImageSection *section = &decoded.sections[index];
-        if (section->type != ZL_IMAGE_SECTION_TEXT && section->type != ZL_IMAGE_SECTION_DATA) {
-            continue;
+        if (section->type == ZL_IMAGE_SECTION_BSS) {
+            memset(vm->_rom + section->address, 0, section->data_size);
+        } else if (section->type == ZL_IMAGE_SECTION_TEXT ||
+                   section->type == ZL_IMAGE_SECTION_DATA) {
+            if (section->data_size != 0) {
+                memcpy(vm->_rom + section->address, section->data, section->data_size);
+            }
         }
-        memcpy(vm->_rom + section->address, section->data, section->data_size);
     }
     vm->_entryPoint = decoded.entry_point;
     zl_image_free(&decoded);

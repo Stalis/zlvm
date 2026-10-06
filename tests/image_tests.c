@@ -25,6 +25,9 @@ static bool test_empty_object_golden_bytes(void) {
     };
     REQUIRE(encoded_size == sizeof expected);
     REQUIRE(memcmp(encoded, expected, sizeof expected) == 0);
+    encoded[52] = 'x';
+    REQUIRE(!zl_image_decode(encoded, encoded_size, &(ZlImage){0}, &error));
+    REQUIRE(error == ZL_IMAGE_ERROR_MALFORMED);
     free(encoded);
     return true;
 }
@@ -55,6 +58,10 @@ static bool test_object_round_trip(void) {
     REQUIRE(decoded.relocations[0].addend == 4);
     zl_image_free(&decoded);
     encoded[80 + 18] = 1;
+    REQUIRE(!zl_image_decode(encoded, encoded_size, &(ZlImage){0}, &error));
+    REQUIRE(error == ZL_IMAGE_ERROR_MALFORMED);
+    encoded[80 + 18] = 0;
+    encoded[80 + 16] = 3;
     REQUIRE(!zl_image_decode(encoded, encoded_size, &(ZlImage){0}, &error));
     REQUIRE(error == ZL_IMAGE_ERROR_MALFORMED);
     free(encoded);
@@ -128,6 +135,21 @@ static bool test_image_load_is_atomic_and_cleanup_is_safe(void) {
 
     ZlImage incomplete = {.section_count = 1, .symbol_count = 1};
     zl_image_free(&incomplete);
+
+    byte code[8] = {0};
+    ZlImageSection bss_sections[] = {{".text", ZL_IMAGE_SECTION_TEXT, 1, 1, 8, code, sizeof code},
+                                     {".bss", ZL_IMAGE_SECTION_BSS, 1, 1, 32, NULL, 4}};
+    ZlImage bss_image = {.kind = ZL_IMAGE_EXECUTABLE,
+                         .entry_point = 8,
+                         .sections = bss_sections,
+                         .section_count = 2};
+    REQUIRE(zl_image_encode(&bss_image, &encoded, &encoded_size, &error));
+    vm_initialize(&vm, 256);
+    memset(vm._rom + 32, 0xaa, 4);
+    REQUIRE(vm_loadImage(&vm, encoded, encoded_size, &error));
+    REQUIRE(vm._rom[32] == 0 && vm._rom[33] == 0 && vm._rom[34] == 0 && vm._rom[35] == 0);
+    vm_destroy(&vm);
+    free(encoded);
     return true;
 }
 

@@ -181,23 +181,26 @@ bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size,
     size_t payload_size = 0;
     for (size_t index = 0; index < image->section_count; index++) {
         const ZlImageSection *section = &image->sections[index];
-        if (section->data_size > UINT32_MAX || (section->data_size != 0 && section->data == NULL) ||
+        if (section->data_size > UINT32_MAX ||
+            (section->type != ZL_IMAGE_SECTION_BSS && section->data_size != 0 &&
+             section->data == NULL) ||
             !valid_alignment(section->alignment) ||
             (section->type < ZL_IMAGE_SECTION_TEXT || section->type > ZL_IMAGE_SECTION_BSS) ||
-            (section->type == ZL_IMAGE_SECTION_BSS && section->data_size != 0) ||
             section->data_size > UINT32_MAX - section->address) {
             set_error(error, ZL_IMAGE_ERROR_MALFORMED);
             return false;
         }
-        if (!add_size(payload_size, section->data_size, &payload_size)) {
+        if (section->type != ZL_IMAGE_SECTION_BSS &&
+            !add_size(payload_size, section->data_size, &payload_size)) {
             set_error(error, ZL_IMAGE_ERROR_OVERFLOW);
             return false;
         }
     }
     for (size_t index = 0; index < image->symbol_count; index++) {
         const ZlImageSymbol *symbol = &image->symbols[index];
-        if (symbol->section_index != ZL_IMAGE_UNDEFINED_SECTION &&
-            symbol->section_index >= image->section_count) {
+        if ((symbol->section_index != ZL_IMAGE_UNDEFINED_SECTION &&
+             symbol->section_index >= image->section_count) ||
+            symbol->binding > ZL_IMAGE_SYMBOL_WEAK || symbol->type > ZL_IMAGE_SYMBOL_FUNCTION) {
             set_error(error, ZL_IMAGE_ERROR_MALFORMED);
             return false;
         }
@@ -208,6 +211,7 @@ bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size,
             relocation->symbol_index >= image->symbol_count ||
             (relocation->type != ZL_IMAGE_RELOCATION_ABSOLUTE32 &&
              relocation->type != ZL_IMAGE_RELOCATION_PC_RELATIVE32) ||
+            image->sections[relocation->section_index].type == ZL_IMAGE_SECTION_BSS ||
             relocation->offset > image->sections[relocation->section_index].data_size ||
             image->sections[relocation->section_index].data_size - relocation->offset < 4) {
             set_error(error, ZL_IMAGE_ERROR_MALFORMED);
@@ -277,8 +281,10 @@ bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size,
         put32(result, record + 16, section->address);
         put32(result, record + 20, (uint32_t)payload_cursor);
         put32(result, record + 24, (uint32_t)section->data_size);
-        memcpy(result + payload_cursor, section->data, section->data_size);
-        payload_cursor += section->data_size;
+        if (section->type != ZL_IMAGE_SECTION_BSS && section->data_size != 0) {
+            memcpy(result + payload_cursor, section->data, section->data_size);
+            payload_cursor += section->data_size;
+        }
     }
     for (size_t index = 0; index < image->symbol_count; index++) {
         const ZlImageSymbol *symbol = &image->symbols[index];
@@ -353,6 +359,10 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
         set_error(error, ZL_IMAGE_ERROR_BOUNDS);
         return false;
     }
+    if (string_size == 0 || input[string_offset] != 0) {
+        set_error(error, ZL_IMAGE_ERROR_MALFORMED);
+        return false;
+    }
     image->kind = kind;
     image->entry_point = get32(input, 24);
     if ((kind == ZL_IMAGE_OBJECT && image->entry_point != 0) ||
@@ -385,8 +395,10 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
         if (!get_string(strings, string_size, get32(input, record), &name) ||
             !valid_alignment(get32(input, record + 12)) ||
             (type < ZL_IMAGE_SECTION_TEXT || type > ZL_IMAGE_SECTION_BSS) ||
-            (type == ZL_IMAGE_SECTION_BSS && data_size != 0) || data_offset < payload_offset ||
-            !in_range(data_offset, data_size, input_size) || data_size > UINT32_MAX - address) {
+            (type == ZL_IMAGE_SECTION_BSS && data_offset > input_size) ||
+            (type != ZL_IMAGE_SECTION_BSS &&
+             (data_offset < payload_offset || !in_range(data_offset, data_size, input_size))) ||
+            data_size > UINT32_MAX - address) {
             zl_image_free(image);
             set_error(error, ZL_IMAGE_ERROR_MALFORMED);
             return false;
@@ -397,14 +409,17 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
         image->sections[index].alignment = get32(input, record + 12);
         image->sections[index].address = get32(input, record + 16);
         image->sections[index].data_size = data_size;
-        image->sections[index].data = malloc(data_size);
+        image->sections[index].data =
+            type == ZL_IMAGE_SECTION_BSS ? calloc(data_size, 1) : malloc(data_size);
         if (image->sections[index].name == NULL ||
             (data_size != 0 && image->sections[index].data == NULL)) {
             zl_image_free(image);
             set_error(error, ZL_IMAGE_ERROR_OUT_OF_MEMORY);
             return false;
         }
-        memcpy((void *)image->sections[index].data, input + data_offset, data_size);
+        if (type != ZL_IMAGE_SECTION_BSS && data_size != 0) {
+            memcpy((void *)image->sections[index].data, input + data_offset, data_size);
+        }
     }
     for (size_t index = 0; index < symbol_count; index++) {
         size_t record = symbol_offset + index * IMAGE_SYMBOL_RECORD_SIZE;
@@ -427,6 +442,12 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
             set_error(error, ZL_IMAGE_ERROR_OUT_OF_MEMORY);
             return false;
         }
+        if (image->symbols[index].binding > ZL_IMAGE_SYMBOL_WEAK ||
+            image->symbols[index].type > ZL_IMAGE_SYMBOL_FUNCTION) {
+            zl_image_free(image);
+            set_error(error, ZL_IMAGE_ERROR_MALFORMED);
+            return false;
+        }
         if (input[record + 18] != 0 || input[record + 19] != 0) {
             zl_image_free(image);
             set_error(error, ZL_IMAGE_ERROR_MALFORMED);
@@ -445,6 +466,7 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
             relocation->symbol_index >= symbol_count ||
             (relocation->type != ZL_IMAGE_RELOCATION_ABSOLUTE32 &&
              relocation->type != ZL_IMAGE_RELOCATION_PC_RELATIVE32) ||
+            image->sections[relocation->section_index].type == ZL_IMAGE_SECTION_BSS ||
             relocation->offset > image->sections[relocation->section_index].data_size ||
             image->sections[relocation->section_index].data_size - relocation->offset < 4) {
             zl_image_free(image);

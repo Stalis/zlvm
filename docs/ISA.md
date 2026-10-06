@@ -347,7 +347,8 @@ header is 52 bytes:
 
 All offsets and sizes are unsigned 32-bit values. Tables contain fixed-width records and are followed
 by a NUL-prefixed string table. Section records contain string offset, type, flags, power-of-two
-alignment, load address, payload offset, and payload size (seven 32-bit fields). Section types are
+alignment, load address, payload offset, and payload size (seven 32-bit fields). For BSS, payload
+size is the zero-filled memory size and no bytes are stored at the payload offset. Section types are
 `1` text, `2` data, and `3` BSS. Symbol records contain name offset, section index, value, size,
 binding, type, and two reserved bytes. `0xffffffff` is the undefined section index. Relocation
 records contain section index, byte offset, relocation type, symbol index, and signed 32-bit addend.
