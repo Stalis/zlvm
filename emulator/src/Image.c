@@ -116,6 +116,7 @@ void zl_image_free(ZlImage *image) {
             free((void *)image->symbols[index].name);
         }
     }
+    free((void *)image->entry_symbol);
     free(image->sections);
     free(image->symbols);
     free(image->relocations);
@@ -155,6 +156,11 @@ bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size,
             set_error(error, ZL_IMAGE_ERROR_OVERFLOW);
             return false;
         }
+    }
+    if (image->kind == ZL_IMAGE_OBJECT && image->entry_symbol != NULL &&
+        !add_size(string_size, strlen(image->entry_symbol) + 1, &string_size)) {
+        set_error(error, ZL_IMAGE_ERROR_OVERFLOW);
+        return false;
     }
     size_t section_bytes;
     size_t symbol_bytes;
@@ -298,6 +304,16 @@ bool zl_image_encode(const ZlImage *image, byte **output, size_t *output_size,
         result[record + 16] = symbol->binding;
         result[record + 17] = symbol->type;
     }
+    if (image->kind == ZL_IMAGE_OBJECT && image->entry_symbol != NULL) {
+        uint32_t entry_offset;
+        if (!append_string(strings, string_size, &string_cursor, image->entry_symbol,
+                           &entry_offset)) {
+            free(result);
+            set_error(error, ZL_IMAGE_ERROR_OVERFLOW);
+            return false;
+        }
+        put32(result, 24, entry_offset);
+    }
     for (size_t index = 0; index < image->relocation_count; index++) {
         const ZlImageRelocation *relocation = &image->relocations[index];
         size_t record = relocation_offset + index * IMAGE_RELOCATION_RECORD_SIZE;
@@ -364,9 +380,9 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
         return false;
     }
     image->kind = kind;
-    image->entry_point = get32(input, 24);
-    if ((kind == ZL_IMAGE_OBJECT && image->entry_point != 0) ||
-        (kind == ZL_IMAGE_EXECUTABLE && (image->entry_point == 0 || relocation_count != 0))) {
+    uint32_t entry_field = get32(input, 24);
+    image->entry_point = kind == ZL_IMAGE_EXECUTABLE ? entry_field : 0;
+    if (kind == ZL_IMAGE_EXECUTABLE && (image->entry_point == 0 || relocation_count != 0)) {
         set_error(error, ZL_IMAGE_ERROR_MALFORMED);
         return false;
     }
@@ -385,6 +401,20 @@ bool zl_image_decode(const byte *input, size_t input_size, ZlImage *image, ZlIma
     }
 
     const byte *strings = input + string_offset;
+    if (kind == ZL_IMAGE_OBJECT && entry_field != 0) {
+        const char *entry_symbol;
+        if (!get_string(strings, string_size, entry_field, &entry_symbol)) {
+            zl_image_free(image);
+            set_error(error, ZL_IMAGE_ERROR_MALFORMED);
+            return false;
+        }
+        image->entry_symbol = copy_string(entry_symbol);
+        if (image->entry_symbol == NULL) {
+            zl_image_free(image);
+            set_error(error, ZL_IMAGE_ERROR_OUT_OF_MEMORY);
+            return false;
+        }
+    }
     for (size_t index = 0; index < section_count; index++) {
         size_t record = section_offset + index * IMAGE_SECTION_RECORD_SIZE;
         uint32_t data_offset = get32(input, record + 20);

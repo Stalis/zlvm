@@ -14,7 +14,7 @@
 #include "Memory.h"
 #include "Parser.h"
 
-ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
+static ZlasmResult assemble_source(const char *source, const char *source_filename, bool object) {
     ZlasmResult result = {0};
     AsmErrorContext *error = calloc(1, sizeof *error);
     ZlasmDiagnostic *diagnostic = calloc(1, sizeof *diagnostic);
@@ -65,7 +65,8 @@ ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
     asm_processDirectives(assembler, parser);
     asm_free(parser);
     asm_processLabels(assembler);
-    result.binary = asm_translate(assembler, &result.binary_size);
+    result.binary = object ? asm_translate_object(assembler, &result.binary_size)
+                           : asm_translate(assembler, &result.binary_size);
 
     asm_free(assembler);
 
@@ -75,6 +76,14 @@ ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
     free(diagnostic);
     free(error);
     return result;
+}
+
+ZlasmResult zlasm_assemble(const char *source, const char *source_filename) {
+    return assemble_source(source, source_filename, false);
+}
+
+ZlasmResult zlasm_assemble_object(const char *source, const char *source_filename) {
+    return assemble_source(source, source_filename, true);
 }
 
 void zlasm_result_free(ZlasmResult *result) {

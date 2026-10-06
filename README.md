@@ -13,6 +13,7 @@ Assembly programs can be executed directly from source or compiled into a fixed-
 - Separate ROM and RAM address spaces
 - Interrupt-based host I/O
 - Direct source execution and standalone binary workflow
+- Section-aware relocatable objects and static linking
 - Structured assembler diagnostics
 - Verified source/binary execution equivalence
 - Documented ISA and automated Debug, Release, and sanitizer testing
@@ -59,6 +60,7 @@ The primary executables are generated at:
 
 - `build/emulator/zlvm`
 - `build/asm/zlasm`
+- `build/linker/zllink`
 
 An installation can be staged with:
 
@@ -93,6 +95,17 @@ The standalone assembler supports an optional output path:
 Without `-o`, it replaces the input extension with `.bin`. The output is a raw little-endian ROM
 image using the instruction and data layout defined in the [ISA reference](docs/ISA.md).
 
+To produce and link versioned images:
+
+```sh
+./build/asm/zlasm -c program.asm -o program.zlo
+./build/linker/zllink -o program.zle program.zlo
+```
+
+Use `--entry symbol` with `zllink` to override `.entry`; otherwise the first object entry symbol or
+`start` is selected. The resulting executable image can be loaded through the `ZlImage` and
+`vm_loadImage` APIs.
+
 ## Assembly Example
 
 ```asm
@@ -110,8 +123,7 @@ case-insensitive because the assembler normalizes them before translation. See t
 
 - Raw `.bin` files remain the compatibility output; versioned object/executable images are exposed
   through the `ZlImage` codec and VM image loader.
-- Sections, alignment, explicit placement, entry selection, macros, external symbols, and linking
-  are incomplete or metadata-only.
+- The versioned executable-image workflow is separate from raw `.bin` compatibility mode.
 
 ## Roadmap: Running `test.asm`
 
@@ -152,11 +164,11 @@ characters encoded by the program (`Hello, World!\n\nBye!\n\n`), reaches `S_HALT
 
 ### Milestone 3: Assembler and ISA completion
 
-- [ ] Make the assembler emit versioned text/data sections, alignment, explicit locations, and
+- [x] Make the assembler emit versioned text/data sections, alignment, explicit locations, and
   entry-point selection.
-- [x] Define the versioned object-file contract for `.global` and `.extern`; linker resolution is
-  still pending. The unused `factorial` declaration in `test.asm` does not block earlier milestones.
-- [ ] Implement macros, syscall behavior, and structured diagnostics for invalid input.
+- [x] Define the versioned object-file contract for `.global` and `.extern`, and resolve symbols
+  through the static linker. The unused `factorial` declaration in `test.asm` remains valid.
+- [ ] Implement syscall behavior and remaining structured diagnostics for invalid input.
 - [ ] Keep the ISA reference and integration tests synchronized with every completed feature.
 
 ## Project Documentation

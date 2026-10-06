@@ -1,6 +1,7 @@
 #ifndef ZLVM_ASM_ZLASM_H
 #define ZLVM_ASM_ZLASM_H
 
+#include "../Image.h"
 #include "../Types.h"
 
 typedef enum ZlasmDiagnosticCode {
@@ -26,6 +27,8 @@ typedef enum ZlasmDiagnosticCode {
     ZLASM_DIAGNOSTIC_MACRO_UNDEFINED = 19,
     ZLASM_DIAGNOSTIC_MACRO_INVALID_ARGUMENT = 20,
     ZLASM_DIAGNOSTIC_MACRO_RECURSION = 21,
+    ZLASM_DIAGNOSTIC_SECTION_ERROR = 22,
+    ZLASM_DIAGNOSTIC_LINK_ERROR = 23,
 } ZlasmDiagnosticCode;
 
 typedef struct ZlasmDiagnostic {
@@ -55,6 +58,9 @@ typedef struct ZlasmResult {
  * nonzero diagnostic code.
  */
 ZlasmResult zlasm_assemble(const char *source, const char *source_filename);
+
+/** Assemble a relocatable ZlImage object encoded in result.binary. */
+ZlasmResult zlasm_assemble_object(const char *source, const char *source_filename);
 
 /** Release the binary owned by result and reset it to an empty result. */
 void zlasm_result_free(ZlasmResult *result);

@@ -7,9 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "Image.h"
 #include "Instruction.h"
 #include "Memory.h"
 #include "Registers.h"
+#include "VirtualMachine.h"
 
 static void line_to_upper(char *line) {
     for (char *character = line; *character != '\0'; character++) {
@@ -21,6 +23,10 @@ static Condition parse_condition(const Token *token);
 static Register parse_register(const Token *token);
 static void validate_operands(Opcode opcode, Statement *statement);
 static void validate_directive(const Directive *directive);
+static size_t select_section(AssemblerContext *context, const char *name);
+static void record_line(AssemblerContext *context, LineList **last, Line *line);
+static bool is_supported_section(const char *name);
+static void validate_section_range(const AsmSection *section, const Token *token);
 
 void asm_init(AssemblerContext *context) {
     context->entry = NULL;
@@ -30,6 +36,10 @@ void asm_init(AssemblerContext *context) {
     context->globalsCount = 0;
     context->labels = NULL;
     context->lines = NULL;
+    context->sections = NULL;
+    context->section_count = 0;
+    context->current_section = 0;
+    select_section(context, "text");
 }
 
 static const char *const ASM_CONTEXT_DELIMITER = ".";
@@ -56,70 +66,155 @@ void asm_processDirectives(AssemblerContext *context, ParserContext *parser) {
                 line->raw = asm_calloc(1, sizeof(struct RawData));
                 line->raw->data = directive_get_raw_data(dir, &line->raw->size);
                 directive_free(dir);
-                continue;
-            }
-            switch (line->dir->type) {
-                case DIR_SECTION:
-                    // TODO(assembler): implement sections.
-                    break;
-                case DIR_GLOBAL:
-                    asm_addGlobal(context, asm_strdup(line->dir->argv[0]->value));
-                    break;
-                case DIR_EXTERN:
-                    asm_addExternal(context, asm_strdup(line->dir->argv[0]->value));
-                    break;
-                case DIR_ALIGN:
-                    // TODO(assembler): implement data alignment.
-                    break;
-                case DIR_ENTRY:
-                    context->entry = asm_strdup(line->dir->argv[0]->value);
-                    break;
-                case DIR_LOCATE:
-                    // TODO(assembler): implement static location changes.
-                    break;
-                case DIR_PROC:
-                    if (stream->first == NULL || stream->first->value == NULL) {
-                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
-                                         ".proc must be followed by a procedure body",
+            } else {
+                switch (line->dir->type) {
+                    case DIR_SECTION:
+                        if (!is_supported_section(line->dir->argv[0]->value)) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR,
+                                             "Unsupported section name", line->dir->argv[0]);
+                        }
+                        context->current_section =
+                            select_section(context, line->dir->argv[0]->value);
+                        break;
+                    case DIR_GLOBAL:
+                        asm_addGlobal(context, asm_strdup(line->dir->argv[0]->value));
+                        break;
+                    case DIR_EXTERN:
+                        asm_addExternal(context, asm_strdup(line->dir->argv[0]->value));
+                        break;
+                    case DIR_ALIGN: {
+                        dword alignment = token_get_int_value(line->dir->argv[0]);
+                        AsmSection *section = &context->sections[context->current_section];
+                        if (alignment == 0 || alignment > UINT32_MAX ||
+                            (alignment & (alignment - 1)) != 0) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR,
+                                             "Alignment must be a nonzero power of two",
+                                             line->dir->argv[0]);
+                        }
+                        size_t remainder = section->size & ((size_t)alignment - 1);
+                        if (remainder != 0) {
+                            size_t padding = (size_t)alignment - remainder;
+                            if (padding > SIZE_MAX - section->size) {
+                                ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE,
+                                                 "Section is too large", line->dir->argv[0]);
+                            }
+                            section->size += padding;
+                        }
+                        if (section->alignment < alignment) {
+                            section->alignment = (uint32_t)alignment;
+                        }
+                        validate_section_range(section, line->dir->argv[0]);
+                    } break;
+                    case DIR_ENTRY:
+                        context->entry = asm_strdup(line->dir->argv[0]->value);
+                        break;
+                    case DIR_LOCATE: {
+                        dword address = token_get_int_value(line->dir->argv[0]);
+                        AsmSection *section = &context->sections[context->current_section];
+                        if (address > UINT32_MAX || address < section->address) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR,
+                                             "Section location overlaps existing content",
+                                             line->dir->argv[0]);
+                        }
+                        if (section->size == 0) {
+                            section->address = (uint32_t)address;
+                            section->flags |= 1u;
+                        } else if ((size_t)address - section->address < section->size) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR,
+                                             "Section location overlaps existing content",
+                                             line->dir->argv[0]);
+                        } else {
+                            section->size = (size_t)address - section->address;
+                        }
+                        validate_section_range(section, line->dir->argv[0]);
+                    } break;
+                    case DIR_PROC:
+                        if (stream->first == NULL || stream->first->value == NULL) {
+                            ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE,
+                                             ".proc must be followed by a procedure body",
+                                             line->dir->name);
+                        }
+                        stream->first->value->label = "";
+                        procedure_context = line->dir->argv[0]->value;
+                        break;
+                    case DIR_ENDPROC:
+                        procedure_context = NULL;
+                        break;
+                    case DIR_MACRO:
+                        // Macro definitions are removed before parsing.
+                        break;
+                    case DIR_ENDMACRO:
+                        break;
+                    default:
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Invalid directive",
                                          line->dir->name);
-                    }
-                    stream->first->value->label = "";
-                    procedure_context = line->dir->argv[0]->value;
-                    break;
-                case DIR_ENDPROC:
-                    procedure_context = NULL;
-                    break;
-                case DIR_MACRO:
-                    // Macro definitions are removed before parsing.
-                    break;
-                case DIR_ENDMACRO:
-                    break;
-                default:
-                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_INVALID_DIRECTIVE, "Invalid directive",
-                                     line->dir->name);
-            }
+                }
 
-            directive_free(line->dir);
-            asm_free(line);
-            line = NULL;
+                directive_free(line->dir);
+                asm_free(line);
+                line = NULL;
+            }
         }
 
         if (line != NULL) {
-            if (context->lines == NULL) {
-                context->lines = asm_calloc(1, sizeof(LineList));
-            }
-            if (last == NULL) {
-                last = context->lines;
-            } else {
-                last->next = asm_calloc(1, sizeof(LineList));
-                last = last->next;
-            }
-            last->value = line;
+            record_line(context, &last, line);
         }
 
         line = lineStream_read(stream);
     }
     asm_free(stream);
+}
+
+static size_t select_section(AssemblerContext *context, const char *name) {
+    for (size_t index = 0; index < context->section_count; index++) {
+        if (strcmp(context->sections[index].name, name) == 0) {
+            return index;
+        }
+    }
+    context->sections =
+        asm_realloc(context->sections, (context->section_count + 1) * sizeof *context->sections);
+    AsmSection *section = &context->sections[context->section_count];
+    *section = (AsmSection){
+        .name = asm_strdup(name),
+        .type = (strcmp(name, ".bss") == 0 || strcmp(name, "bss") == 0)     ? ZL_IMAGE_SECTION_BSS
+                : (strcmp(name, ".data") == 0 || strcmp(name, "data") == 0) ? ZL_IMAGE_SECTION_DATA
+                                                                            : ZL_IMAGE_SECTION_TEXT,
+        .alignment = 1};
+    return context->section_count++;
+}
+
+static bool is_supported_section(const char *name) {
+    return strcmp(name, ".text") == 0 || strcmp(name, "text") == 0 || strcmp(name, ".data") == 0 ||
+           strcmp(name, "data") == 0 || strcmp(name, ".bss") == 0 || strcmp(name, "bss") == 0;
+}
+
+static void validate_section_range(const AsmSection *section, const Token *token) {
+    if (section->address > ZLVM_ROM_SIZE || section->size > ZLVM_ROM_SIZE - section->address) {
+        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR, "Section content exceeds VM ROM size",
+                         token);
+    }
+}
+
+static void record_line(AssemblerContext *context, LineList **last, Line *line) {
+    AsmSection *section = &context->sections[context->current_section];
+    line->section_index = context->current_section;
+    line->section_offset = section->size;
+    line->size = line->type == L_STMT ? ZLVM_INSTRUCTION_SIZE : line->raw->size;
+    if (line->size > SIZE_MAX - section->size) {
+        ZLASM_FAIL(ZLASM_DIAGNOSTIC_OUTPUT_TOO_LARGE, "Section is too large");
+    }
+    section->size += line->size;
+    validate_section_range(section, NULL);
+    if (context->lines == NULL) {
+        context->lines = asm_calloc(1, sizeof(LineList));
+    }
+    if (*last == NULL) {
+        *last = context->lines;
+    } else {
+        (*last)->next = asm_calloc(1, sizeof(LineList));
+        *last = (*last)->next;
+    }
+    (*last)->value = line;
 }
 
 void asm_addGlobal(AssemblerContext *context, const char *symbol) {
@@ -146,9 +241,11 @@ void asm_processLabels(AssemblerContext *context) {
     LineList *last = context->lines;
     context->labels = asm_calloc(1, sizeof(LabelTable));
     size_t address = 0;
-
     while (last != NULL) {
         if (last->value->label != NULL) {
+            if (labelInfo_getIfExist(context->labels, last->value->label) != NULL) {
+                ZLASM_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR, "Duplicate label definition");
+            }
             labelTable_setOrCreate(context->labels, asm_strdup(last->value->label), address);
         }
         if (last->value->type == L_STMT) {
@@ -245,6 +342,150 @@ byte *asm_translate(AssemblerContext *context, size_t *output_size) {
     }
 
     *output_size = offset;
+    return result;
+}
+
+static ptrdiff_t find_symbol_line(const AssemblerContext *context, const char *name,
+                                  size_t section_index) {
+    for (LineList *item = context->lines; item != NULL; item = item->next) {
+        Line *line = item->value;
+        if (line->section_index == section_index && line->label != NULL &&
+            strcmp(line->label, name) == 0) {
+            return (ptrdiff_t)line->section_offset;
+        }
+    }
+    return -1;
+}
+
+static ptrdiff_t find_image_symbol(const ZlImageSymbol *symbols, size_t count, const char *name) {
+    for (size_t index = 0; index < count; index++) {
+        if (strcmp(symbols[index].name, name) == 0) {
+            return (ptrdiff_t)index;
+        }
+    }
+    return -1;
+}
+
+byte *asm_translate_object(AssemblerContext *context, size_t *output_size) {
+    ZlImage image = {.kind = ZL_IMAGE_OBJECT, .entry_symbol = context->entry};
+    image.section_count = context->section_count;
+    image.sections = asm_calloc(image.section_count, sizeof *image.sections);
+    for (size_t index = 0; index < image.section_count; index++) {
+        AsmSection *source = &context->sections[index];
+        image.sections[index] = (ZlImageSection){.name = source->name,
+                                                 .type = source->type,
+                                                 .flags = source->flags,
+                                                 .alignment = source->alignment,
+                                                 .address = source->address,
+                                                 .data_size = source->size};
+        if (source->type != ZL_IMAGE_SECTION_BSS) {
+            image.sections[index].data = asm_calloc(source->size, sizeof(byte));
+        }
+    }
+
+    size_t symbol_count = 0;
+    for (LineList *item = context->lines; item != NULL; item = item->next) {
+        if (item->value->label != NULL &&
+            find_image_symbol(image.symbols, symbol_count, item->value->label) < 0) {
+            image.symbols = asm_realloc(image.symbols, (symbol_count + 1) * sizeof *image.symbols);
+            image.symbols[symbol_count++] = (ZlImageSymbol){
+                .name = item->value->label,
+                .section_index = item->value->section_index,
+                .value = (uint32_t)item->value->section_offset,
+                .binding = ZL_IMAGE_SYMBOL_LOCAL,
+                .type = item->value->section_index < context->section_count &&
+                                context->sections[item->value->section_index].type ==
+                                    ZL_IMAGE_SECTION_TEXT
+                            ? ZL_IMAGE_SYMBOL_FUNCTION
+                            : ZL_IMAGE_SYMBOL_OBJECT};
+        }
+    }
+    for (size_t index = 0; index < context->globalsCount; index++) {
+        ssize_t symbol = find_image_symbol(image.symbols, symbol_count, context->globals[index]);
+        if (symbol < 0) {
+            ZLASM_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR, "Global symbol has no definition");
+        }
+        image.symbols[symbol].binding = ZL_IMAGE_SYMBOL_GLOBAL;
+    }
+    for (size_t index = 0; index < context->externalsCount; index++) {
+        const char *name = context->externals[index];
+        if (find_image_symbol(image.symbols, symbol_count, name) < 0) {
+            image.symbols = asm_realloc(image.symbols, (symbol_count + 1) * sizeof *image.symbols);
+            image.symbols[symbol_count++] =
+                (ZlImageSymbol){.name = name,
+                                .section_index = ZL_IMAGE_UNDEFINED_SECTION,
+                                .binding = ZL_IMAGE_SYMBOL_GLOBAL};
+        }
+    }
+    image.symbol_count = symbol_count;
+
+    for (LineList *item = context->lines; item != NULL; item = item->next) {
+        Line *line = item->value;
+        if (line->type == L_RAW) {
+            if (image.sections[line->section_index].type == ZL_IMAGE_SECTION_BSS) {
+                ZLASM_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR,
+                           "Initialized data cannot be emitted in bss");
+            }
+            memcpy((byte *)image.sections[line->section_index].data + line->section_offset,
+                   line->raw->data, line->raw->size);
+            continue;
+        }
+        Statement *statement = line->stmt;
+        if (image.sections[line->section_index].type == ZL_IMAGE_SECTION_BSS) {
+            ZLASM_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR, "Instructions cannot be emitted in bss");
+        }
+        line_to_upper(statement->opcode->value);
+        Instruction instruction = {
+            .opcode_ = string_to_opcode(statement->opcode->value),
+            .condition_ =
+                statement->cond == NULL ? C_UNCONDITIONAL : parse_condition(statement->cond),
+            .register1 = statement->reg1 == NULL ? R_ZERO : parse_register(statement->reg1),
+            .register2 = statement->reg2 == NULL ? R_ZERO : parse_register(statement->reg2)};
+        validate_operands(instruction.opcode_, statement);
+        if (statement->imm != NULL) {
+            if (statement->imm->type == TOK_LABEL_USE) {
+                ptrdiff_t local =
+                    find_symbol_line(context, statement->imm->value, line->section_index);
+                ptrdiff_t symbol =
+                    find_image_symbol(image.symbols, symbol_count, statement->imm->value);
+                if (local >= 0) {
+                    instruction.immediate = (word)local;
+                } else {
+                    if (symbol < 0) {
+                        ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_UNKNOWN_LABEL, "Unknown label",
+                                         statement->imm);
+                    }
+                    instruction.immediate = 0;
+                    image.relocations =
+                        asm_realloc(image.relocations,
+                                    (image.relocation_count + 1) * sizeof *image.relocations);
+                    image.relocations[image.relocation_count++] = (ZlImageRelocation){
+                        (uint32_t)line->section_index, (uint32_t)(line->section_offset + 4),
+                        ZL_IMAGE_RELOCATION_ABSOLUTE32, (uint32_t)symbol, 0};
+                }
+            } else if (statement->imm->type == TOK_CHAR_LITERAL) {
+                instruction.immediate = token_get_char_value(statement->imm);
+            } else {
+                dword value = token_get_int_value(statement->imm);
+                if (value > WORD_MAX) {
+                    ZLASM_TOKEN_FAIL(ZLASM_DIAGNOSTIC_VALUE_OUT_OF_RANGE,
+                                     "Immediate exceeds word size", statement->imm);
+                }
+                instruction.immediate = (word)value;
+            }
+        }
+        byte encoded[ZLVM_INSTRUCTION_SIZE];
+        if (!instruction_encode(encoded, sizeof encoded, &instruction)) {
+            ZLASM_FAIL(ZLASM_DIAGNOSTIC_INTERNAL_ERROR, "Instruction encoding failed");
+        }
+        memcpy((byte *)image.sections[line->section_index].data + line->section_offset, encoded,
+               sizeof encoded);
+    }
+    byte *result = NULL;
+    ZlImageError error;
+    if (!zl_image_encode(&image, &result, output_size, &error)) {
+        ZLASM_FAIL(ZLASM_DIAGNOSTIC_SECTION_ERROR, "Unable to encode object image");
+    }
     return result;
 }
 

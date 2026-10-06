@@ -77,6 +77,7 @@ typedef struct ZlImageRelocation {
 typedef struct ZlImage {
     uint8_t kind;
     uint32_t entry_point;
+    const char *entry_symbol;
     ZlImageSection *sections;
     size_t section_count;
     ZlImageSymbol *symbols;
