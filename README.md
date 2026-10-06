@@ -43,6 +43,85 @@ The repository contains two primary components:
 
 See the [ZL Virtual CPU ISA](docs/ISA.md) for the complete machine and assembly-language reference.
 
+## Requirements
+
+- CMake 4.4.2 or newer
+- A C11 compiler
+
+## Build
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+The primary executables are generated at:
+
+- `build/emulator/zlvm`
+- `build/asm/zlasm`
+
+An installation can be staged with:
+
+```sh
+cmake --install build --prefix install
+```
+
+## Usage
+
+The intended direct source workflow is:
+
+```sh
+./build/emulator/zlvm test.asm
+```
+
+`zlvm` assembles the source in memory, loads the resulting image into ROM, starts execution at ROM
+address zero, and runs until the VM halts or enters an error state.
+
+To execute an image assembled separately, use the explicit `--binary` option:
+
+```sh
+./build/asm/zlasm program.asm -o program.bin
+./build/emulator/zlvm --binary program.bin
+```
+
+The standalone assembler supports an optional output path:
+
+```sh
+./build/asm/zlasm program.asm -o program.bin
+```
+
+Without `-o`, it replaces the input extension with `.bin`. The output is a raw little-endian ROM
+image using the instruction and data layout defined in the [ISA reference](docs/ISA.md).
+
+## Assembly Example
+
+```asm
+start:
+    movi $a0, 'A'
+    int  0x02
+    int  0xFF
+```
+
+Registers use a `$` prefix, label references use `#`, and `;` starts a comment. Opcodes are
+case-insensitive because the assembler normalizes them before translation. See the
+[ISA reference](docs/ISA.md#assembly-language) for operands, literals, conditions, and directives.
+
+## Project Documentation
+
+- [ZL Virtual CPU ISA](docs/ISA.md)
+- [Coding Conventions](docs/CODING_CONVENTIONS.md)
+- [BSD 2-Clause License](LICENSE)
+
+## Contributing
+
+Before contributing, read the [coding conventions](docs/CODING_CONVENTIONS.md). New behavior should
+include focused tests, and changes to instructions, registers, conditions, directives, interrupts,
+or binary encoding must update the ISA reference.
+
+## License
+
+ZLVM is available under the [BSD 2-Clause License](LICENSE).
+
 ## Development status
 
 The assembler and emulator support direct source execution and standalone binary ROM images. The end-to-end reference program exercises control flow, procedures, stack and RAM access, strings, data directives, macros, character output, and clean VM halting.
