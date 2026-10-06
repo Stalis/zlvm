@@ -48,9 +48,9 @@ See the [ZL Virtual CPU ISA](docs/ISA.md) for the complete machine and assembly-
 
 ## Development status
 
-The assembler and emulator support direct source execution and standalone binary ROM images. The end-to-end reference program exercises control flow, procedures, stack and RAM access, strings, data directives, macros, character output, and clean VM halting.
+ZLVM supports direct execution from assembly source, standalone raw ROM images, and a section-aware object and linking workflow. The assembler can emit relocatable `.zlo` objects, while `zllink` resolves symbols and relocations and produces versioned `.zle` executable images with a configurable entry point.
 
-Remaining work includes versioned executable images, sections and alignment, entry-point metadata, relocation, external symbols, and linking. Active work is tracked in [GitHub Issues](../../issues).
+The end-to-end test suite covers control flow, procedures, stack and RAM access, strings, data directives, macros, object linking, character output, and clean VM halting. Further ISA and toolchain development is tracked in [GitHub Issues](../../issues).
 
 ## Requirements
 
