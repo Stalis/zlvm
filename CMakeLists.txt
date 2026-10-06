@@ -24,13 +24,14 @@ endfunction()
 
 add_subdirectory(emulator)
 add_subdirectory(asm)
+add_subdirectory(linker)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
 install(
-    TARGETS zlvm zlvm-static zlvm-bin
+    TARGETS zlvm zlvm-static zlvm-bin zllink
     RUNTIME DESTINATION ${ZLVM_BIN_PATH}
     LIBRARY DESTINATION ${ZLVM_LIB_PATH}
     ARCHIVE DESTINATION ${ZLVM_LIB_PATH}

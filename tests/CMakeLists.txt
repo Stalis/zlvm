@@ -61,6 +61,11 @@ target_link_libraries(zlvm-image-tests PRIVATE zlvm-static)
 zlvm_configure_target(zlvm-image-tests)
 add_test(NAME zlvm.image-format COMMAND zlvm-image-tests)
 
+add_executable(zlvm-linker-tests linker_tests.c)
+target_link_libraries(zlvm-linker-tests PRIVATE zlasm-static zlvm-static)
+zlvm_configure_target(zlvm-linker-tests)
+add_test(NAME zlvm.linker COMMAND zlvm-linker-tests)
+
 add_test(
     NAME zlasm.cli-diagnostics
     COMMAND

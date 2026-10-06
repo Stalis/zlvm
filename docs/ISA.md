@@ -259,12 +259,12 @@ data directives apply their narrower range checks after parsing.
 
 | Directive | Intended purpose | Current status |
 | --- | --- | --- |
-| `.section name` | Select a section | Accepted and removed; no layout effect |
-| `.global symbol` | Export a symbol | Stored as metadata; no linker uses it |
-| `.extern symbol [...]` | Import a symbol | First argument stored as metadata; no linker uses it |
-| `.align value` | Align following data | Accepted and ignored |
+| `.section name` | Select a section (`text`, `data`, or `bss`) | Independent section counter |
+| `.global symbol` | Export a symbol | Emits a global object symbol |
+| `.extern symbol [...]` | Import a symbol | Emits an undefined symbol and relocations |
+| `.align value` | Align following data | Nonzero power-of-two padding |
 | `.entry symbol` | Select the entry point | Stored as metadata; VM still starts at address zero |
-| `.locate address` | Move the output location | Accepted and ignored |
+| `.locate address` | Move the section location | Places an empty section or creates zero padding |
 | `.ascii values...` | Emit strings/bytes without a terminator | Implemented |
 | `.asciiz values...` | Emit values followed by NUL | Implemented |
 | `.byte values...` | Emit 8-bit values | Implemented |
@@ -294,6 +294,15 @@ compatibility, including `.extern factorial, 0xFF`.
 emits `12 34 12 78 56 34 12 ef cd ab 89 67 45 23 01`. VM halfword, word, and
 doubleword memory reads and writes use the same little-endian order. Multi-byte values need not be
 aligned.
+
+Section-aware assembly is selected with `zlasm -c source.asm -o source.zlo`. Each section has an
+independent byte counter. A section starts at address zero unless `.locate` gives it an address;
+`.align` advances its counter to the next aligned address and fills the gap with zeroes. Locations
+must not move backwards. Labels in instruction immediates produce absolute 32-bit relocations when
+they are external; local labels are resolved while assembling. The minimal static linker is
+`zllink -o program.zle [--entry symbol] object...`; it starts automatically placed sections at
+address `0x0008`, honors explicit locations, rejects overlaps and 32-bit overflow, resolves global
+symbols, applies relocations, and requires a nonzero entry symbol (default `start`).
 
 ### Macros
 
@@ -337,7 +346,7 @@ header is 52 bytes:
 | 12 | 4 | Section count |
 | 16 | 4 | Symbol count |
 | 20 | 4 | Relocation count |
-| 24 | 4 | Executable entry byte address, otherwise zero |
+| 24 | 4 | Executable entry byte address; object entry-symbol string offset, or zero |
 | 28 | 4 | Section table offset |
 | 32 | 4 | Symbol table offset |
 | 36 | 4 | Relocation table offset |
@@ -354,9 +363,10 @@ binding, type, and two reserved bytes. `0xffffffff` is the undefined section ind
 records contain section index, byte offset, relocation type, symbol index, and signed 32-bit addend.
 Relocation types `1` and `2` are absolute 32-bit and PC-relative 32-bit respectively.
 
-An object may contain local, global, weak, and undefined symbols and relocations. An executable must
+An object may contain local, global, weak, and undefined symbols and relocations. An object may also
+record an entry symbol through header field 24. An executable must
 have a nonzero entry address inside a text section and must not contain relocation records; relocation
-application is not implemented yet. The loader copies text and data sections into ROM;
+application is performed by `zllink`. The loader copies text and data sections into ROM;
 BSS has no file payload. Section and table ranges must be within the file, names must terminate inside
 the string table, indexes must be valid, alignments must be nonzero powers of two, and arithmetic
 overflow is rejected. Bad magic, unsupported versions, unknown kinds, malformed records, bounds

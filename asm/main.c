@@ -5,26 +5,34 @@
 #include "asm/zlasm.h"
 #include "src/Memory.h"
 
-static ZlasmResult read_source(const char *path);
-static char *derive_output_path(const char *input_path);
+static ZlasmResult read_source(const char *path, bool object);
+static char *derive_output_path(const char *input_path, bool object);
 static void write_binary(const char *path, const byte *data, size_t size);
 static void print_diagnostic(const ZlasmDiagnostic *diagnostic);
 
 int main(int argc, char **argv) {
-    if (argc != 2 && argc != 4) {
-        fprintf(stderr, "Usage: %s <assembly-file> [-o <output-file>]\n", argv[0]);
+    bool object = false;
+    int input_index = 1;
+    if (argc > 1 && strcmp(argv[1], "-c") == 0) {
+        object = true;
+        input_index++;
+    }
+    if (argc != input_index + 1 && argc != input_index + 3) {
+        fprintf(stderr, "Usage: %s [-c] <assembly-file> [-o <output-file>]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    if (argc == 4 && strcmp(argv[2], "-o") != 0) {
+    if (argc == input_index + 3 && strcmp(argv[input_index + 1], "-o") != 0) {
         fprintf(stderr, "Expected -o before the output path\n");
         return EXIT_FAILURE;
     }
 
     char *derived_path = NULL;
-    const char *output_path = argc == 4 ? argv[3] : (derived_path = derive_output_path(argv[1]));
+    const char *output_path = argc == input_index + 3
+                                  ? argv[input_index + 2]
+                                  : (derived_path = derive_output_path(argv[input_index], object));
 
-    ZlasmResult result = read_source(argv[1]);
+    ZlasmResult result = read_source(argv[input_index], object);
     if (result.diagnostic.code != ZLASM_DIAGNOSTIC_NONE) {
         print_diagnostic(&result.diagnostic);
         asm_free(derived_path);
@@ -37,7 +45,7 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-static ZlasmResult read_source(const char *path) {
+static ZlasmResult read_source(const char *path, bool object) {
     const size_t growth_size = 1024;
     size_t capacity = growth_size;
     size_t length = 0;
@@ -75,7 +83,8 @@ static ZlasmResult read_source(const char *path) {
     }
 
     source[length] = '\0';
-    ZlasmResult result = zlasm_assemble(source, path);
+    ZlasmResult result =
+        object ? zlasm_assemble_object(source, path) : zlasm_assemble(source, path);
     asm_free(source);
     return result;
 }
@@ -92,7 +101,7 @@ static void print_diagnostic(const ZlasmDiagnostic *diagnostic) {
     }
 }
 
-static char *derive_output_path(const char *input_path) {
+static char *derive_output_path(const char *input_path, bool object) {
     const char *last_separator = strrchr(input_path, '/');
     const char *last_dot = strrchr(input_path, '.');
     size_t stem_length = strlen(input_path);
@@ -101,9 +110,10 @@ static char *derive_output_path(const char *input_path) {
         stem_length = (size_t)(last_dot - input_path);
     }
 
-    char *output_path = asm_malloc(stem_length + sizeof(".bin"));
+    const char *extension = object ? ".zlo" : ".bin";
+    char *output_path = asm_malloc(stem_length + strlen(extension) + 1);
     memcpy(output_path, input_path, stem_length);
-    memcpy(output_path + stem_length, ".bin", sizeof(".bin"));
+    strcpy(output_path + stem_length, extension);
     return output_path;
 }
 

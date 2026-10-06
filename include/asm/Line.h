@@ -19,6 +19,8 @@ typedef struct Line {
     LineType type;
     char *label;
     size_t size;
+    size_t section_index;
+    size_t section_offset;
     union {
         Directive *dir;
         Statement *stmt;
